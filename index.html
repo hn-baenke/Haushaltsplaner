@@ -698,36 +698,36 @@ body, html {
 </section>
 
 <!-- TAB 3: EINKAUFSLISTE (Versteckt bis aktiviert) -->
-<section id="shopping" class="tab-content" style="display: none; flex-direction: column; height: calc(100vh - 120px); position: relative; padding-bottom: 70px;">
+<section id="shopping" class="tab-content" style="display: none; flex-direction: column; height: 100dvh; max-height: calc(100vh - 70px); position: relative; padding: 0;">
   
-  <!-- 1. OBEN: Aktuelle Einkaufsliste (Zu kaufen) -->
-  <div class="card" style="margin-bottom: 12px;">
-    <div class="actions-bar" style="margin-bottom: 8px;">
-      <h3 style="margin: 0;">🛒 Einkaufsliste</h3>
-      <button class="btn btn-secondary" style="font-size: 0.8rem;" onclick="clearCheckedShoppingItems()">Erledigte löschen</button>
+  <div style="flex: 1; overflow-y: auto; padding: 12px 12px 10px 12px; display: flex; flex-direction: column; gap: 12px;">
+    
+    <div class="card">
+      <div class="actions-bar" style="margin-bottom: 8px;">
+        <h3 style="margin: 0;">🛒 Einkaufsliste</h3>
+        <button class="btn btn-secondary" style="font-size: 0.8rem;" onclick="clearCheckedShoppingItems()">Erledigte löschen</button>
+      </div>
+      <div id="active-shopping-list">
+        </div>
     </div>
-    <div id="active-shopping-list">
-      <!-- Wird dynamisch gefüllt -->
+
+    <div class="card" style="flex: 1; min-height: 150px;">
+      <h3 style="font-size: 1rem; margin-top: 0; margin-bottom: 12px;">📚 Artikel-Katalog</h3>
+      <div id="catalog-items-container" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(95px, 1fr)); gap: 8px;">
+        </div>
     </div>
+
   </div>
 
-  <!-- 2. MITTE: Alle Artikel aus der Datenbank (als 3er-Grid) -->
-  <div class="card" style="flex: 1; overflow-y: auto; margin-bottom: 10px; display: flex; flex-direction: column;">
-    <h3 style="font-size: 1rem; margin-top: 0; margin-bottom: 12px;">📚 Artikel-Katalog</h3>
-    <div id="catalog-items-container" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;">
-      <!-- Hier landen die gefilterten Artikel im Kachel-Design -->
-    </div>
-  </div>
-
-  <!-- 3. UNTEN: Fixiertes Live-Suchfeld -->
-  <div style="position: absolute; bottom: 0; left: 0; right: 0; background: var(--bg-main, #f8fafc); padding: 10px 16px; border-top: 1px solid var(--border); border-radius: 0 0 12px 12px;">
-    <div style="position: relative; display: flex; gap: 8px;">
-      <input type="text" id="shopping-live-filter" placeholder="🔍 Artikel suchen oder neu anlegen..." oninput="filterShoppingCatalog(this.value)" style="flex: 1; padding: 10px 14px; border-radius: 8px; border: 1px solid var(--border); font-size: 0.9rem; outline: none; background: white; margin: 0;">
+  <div style="position: sticky; bottom: 0; left: 0; right: 0; background: var(--bg-main, #f8fafc); padding: 10px 12px; border-top: 1px solid var(--border); z-index: 10; width: 100%; box-sizing: border-box;">
+    <div style="display: flex; gap: 8px;">
+      <input type="text" id="shopping-live-filter" placeholder="🔍 Artikel suchen oder neu anlegen..." oninput="filterShoppingCatalog(this.value)" style="flex: 1; padding: 10px 14px; border-radius: 8px; border: 1px solid var(--border); font-size: 0.95rem; outline: none; background: white; margin: 0;">
       <button type="button" id="btn-add-new-item" class="btn btn-primary" style="display: none; white-space: nowrap;" onclick="addNewItemFromFilter()">+ Neu</button>
     </div>
   </div>
 
 </section>
+  
 
 <!-- MODALS -->
 <div id="modal-add-recipe" class="modal-overlay">
