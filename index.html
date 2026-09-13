@@ -1,0 +1,3190 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Haushaltsplaner</title>
+  
+  <!-- Supabase JS Client CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <style>
+    :root {
+      --bg: #f8fafc;
+      --card-bg: #ffffff;
+      --primary: #2563eb;
+      --primary-hover: #1d4ed8;
+      --accent: #10b981;
+      --text: #0f172a;
+      --text-muted: #64748b;
+      --border: #e2e8f0;
+      --radius: 12px;
+      --shadow: 0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -2px rgba(0,0,0,0.05);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      padding: 16px 12px;
+      max-width: 800px;
+      margin: 0 auto;
+    }
+
+    header {
+      margin-bottom: 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+      border-bottom: 2px solid var(--border);
+      padding-bottom: 12px;
+    }
+
+    h1 {
+      font-size: 1.5rem;
+      font-weight: 700;
+    }
+
+    nav.main-nav {
+      display: flex;
+      gap: 8px;
+    }
+
+    .main-nav button {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      padding: 8px 16px;
+      border-radius: var(--radius);
+      font-weight: 700;
+      font-size: 0.95rem;
+      cursor: pointer;
+      transition: all 0.2s;
+      color: var(--text-muted);
+    }
+
+    .main-nav button.active {
+      background: var(--primary);
+      color: white;
+      border-color: var(--primary);
+    }
+
+    .sub-nav-container {
+      margin-bottom: 16px;
+      background: #eff6ff;
+      padding: 10px;
+      border-radius: var(--radius);
+      border: 1px solid #dbeafe;
+    }
+
+    .sub-nav {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .sub-nav button {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      padding: 10px 8px;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 0.85rem;
+      cursor: pointer;
+      transition: all 0.2s;
+      color: var(--text);
+      text-align: center;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .sub-nav button.active {
+      background: #3b82f6;
+      color: white;
+      border-color: #3b82f6;
+    }
+
+    .tab-content, .sub-tab-content {
+      display: none;
+    }
+
+    .tab-content.active, .sub-tab-content.active {
+      display: block;
+    }
+
+    .card {
+      background: var(--card-bg);
+      border-radius: var(--radius);
+      padding: 16px;
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow);
+      margin-bottom: 16px;
+    }
+
+    .btn {
+      background: var(--primary);
+      color: white;
+      border: none;
+      padding: 8px 14px;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .btn:hover { background: var(--primary-hover); }
+    .btn-accent { background: var(--accent); }
+    .btn-accent:hover { background: #059669; }
+    .btn-secondary { background: #f1f5f9; color: var(--text); border: 1px solid var(--border); }
+    .btn-secondary:hover { background: #e2e8f0; }
+    .btn-danger { background: #ef4444; color: white; }
+    .btn-danger:hover { background: #dc2626; }
+
+    input, select, textarea {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      margin-bottom: 12px;
+      font-size: 0.95rem;
+    }
+
+    .todo-form {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 8px;
+    }
+
+    @media (min-width: 500px) {
+      .todo-form { grid-template-columns: 2fr 1fr auto; }
+    }
+
+    .todo-list { list-style: none; }
+
+    .todo-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--border);
+      gap: 8px;
+    }
+
+    .todo-item:last-child { border-bottom: none; }
+
+    .todo-item.done span {
+      text-decoration: line-through;
+      color: var(--text-muted);
+    }
+
+    .todo-left {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .todo-tag {
+      font-size: 0.75rem;
+      background: #e2e8f0;
+      padding: 2px 6px;
+      border-radius: 12px;
+      color: var(--text-muted);
+    }
+
+    .week-nav-selector {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 6px;
+      margin-bottom: 16px;
+    }
+
+    .week-nav-selector button {
+      padding: 10px 4px;
+      border: 1px solid var(--border);
+      background: var(--card-bg);
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 0.8rem;
+      cursor: pointer;
+      text-align: center;
+      transition: all 0.2s;
+      line-height: 1.2;
+    }
+
+    .week-nav-selector button.active {
+      background: var(--primary);
+      color: white;
+      border-color: var(--primary);
+    }
+
+    .compact-week-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .compact-day-row {
+      display: flex;
+      padding: 8px 0;
+      border-bottom: 1px solid #f1f5f9;
+      font-size: 0.95rem;
+    }
+
+    .compact-day-row:last-child {
+      border-bottom: none;
+    }
+
+    .compact-day-name {
+      width: 100px;
+      font-weight: 700;
+      color: var(--text);
+      flex-shrink: 0;
+    }
+
+    .compact-day-meal {
+      color: var(--primary-hover);
+      font-weight: 500;
+    }
+
+    .compact-day-meal.empty {
+      color: var(--text-muted);
+      font-weight: normal;
+      font-style: italic;
+    }
+
+    .grid-week-edit {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 12px;
+    }
+
+    .day-card-edit {
+      background: #f8fafc;
+      padding: 12px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+    }
+
+    .day-card-edit h4 {
+      font-size: 0.95rem;
+      margin-bottom: 6px;
+      color: var(--primary);
+    }
+
+    .day-card-edit textarea {
+      height: 50px;
+      resize: vertical;
+      margin-bottom: 6px;
+      font-size: 0.9rem;
+    }
+
+    .recipe-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      gap: 12px;
+      margin-top: 12px;
+    }
+
+    .recipe-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 12px;
+      box-shadow: var(--shadow);
+      cursor: pointer;
+      transition: transform 0.15s, box-shadow 0.15s;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .recipe-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 12px -2px rgba(0,0,0,0.1);
+    }
+
+    .actions-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .cat-table-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .cat-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 12px;
+      background: #f8fafc;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 30px 16px;
+    }
+
+    .loading {
+      color: var(--text-muted);
+      font-style: italic;
+    }
+
+    /* MODAL POPUP STYLES */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(15, 23, 42, 0.5);
+      backdrop-filter: blur(3px);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 16px;
+      z-index: 1000;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease;
+    }
+
+    .modal-overlay.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .modal-card {
+      background: var(--card-bg);
+      border-radius: var(--radius);
+      padding: 20px;
+      width: 100%;
+      max-width: 550px;
+      max-height: 90vh;
+      overflow-y: auto;
+      box-shadow: 0 10px 25px -5px rgba(0,0,0,0.2);
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 10px;
+    }
+
+    .modal-close {
+      background: none;
+      border: none;
+      font-size: 1.5rem;
+      cursor: pointer;
+      color: var(--text-muted);
+    }
+
+    .ingredient-row, .step-row {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+
+    .ingredient-row input, .ingredient-row select, .step-row textarea {
+      margin-bottom: 0;
+    }
+
+    .step-row textarea {
+      height: 45px;
+      resize: vertical;
+      font-size: 0.9rem;
+    }
+
+    .servings-counter {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: #f1f5f9;
+      padding: 8px 12px;
+      border-radius: 8px;
+      margin-bottom: 16px;
+      width: fit-content;
+    }
+
+    .servings-btn {
+      width: 32px;
+      height: 32px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: white;
+      font-weight: bold;
+      font-size: 1.1rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .servings-btn:hover { background: #e2e8f0; }
+
+    .ingredient-view-list {
+      list-style: none;
+      background: #f8fafc;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px 12px;
+      margin-bottom: 16px;
+    }
+
+    .ingredient-view-item {
+      display: flex;
+      justify-content: space-between;
+      padding: 6px 0;
+      border-bottom: 1px solid #e2e8f0;
+      font-size: 0.95rem;
+    }
+
+    .ingredient-view-item:last-child { border-bottom: none; }
+
+    .step-stepper-box {
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+      border-radius: 12px;
+      padding: 16px;
+      margin-top: 10px;
+    }
+
+    .step-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+      font-weight: 700;
+      color: var(--primary);
+    }
+
+    .step-content {
+      background: white;
+      padding: 14px;
+      border-radius: 8px;
+      border: 1px solid #dbeafe;
+      font-size: 1rem;
+      line-height: 1.5;
+      min-height: 70px;
+      margin-bottom: 12px;
+    }
+
+    .step-nav-buttons {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .progress-bar-bg {
+      height: 6px;
+      background: #dbeafe;
+      border-radius: 3px;
+      margin-bottom: 12px;
+      overflow: hidden;
+    }
+
+    .progress-bar-fill {
+      height: 100%;
+      background: var(--primary);
+      width: 0%;
+      transition: width 0.25s ease;
+    }
+
+    .checkbox-label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      background: #f1f5f9;
+      padding: 10px;
+      border-radius: 8px;
+      margin-bottom: 12px;
+      cursor: pointer;
+    }
+
+    .checkbox-label input {
+      width: auto;
+      margin-bottom: 0;
+      cursor: pointer;
+    }
+
+    .recipe-fields-box {
+      border: 1px solid #bfdbfe;
+      background: #eff6ff;
+      padding: 12px;
+      border-radius: 8px;
+      margin-bottom: 12px;
+    }
+
+    .dish-list-table {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-top: 8px;
+    }
+
+    .dish-list-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 12px;
+      background: #f8fafc;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 0.9rem;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+  <h1>🏠 Haushaltsplaner</h1>
+  <nav class="main-nav">
+    <button id="btn-main-todos" onclick="switchMainTab('todos')">To-Dos</button>
+    <button id="btn-main-essensplan" class="active" onclick="switchMainTab('essensplan')">Essensplan</button>
+    <button id="btn-main-shopping" onclick="switchMainTab('shopping')">🛒 Einkaufsliste</button>
+  </nav>
+</header>
+
+<!-- TAB 1: TO-DOS -->
+<section id="todos" class="tab-content" style="display: none;">
+  <div class="card">
+    <h3 style="margin-bottom: 10px;">Neue Aufgabe</h3>
+    <form class="todo-form" onsubmit="addTodo(event)">
+      <input type="text" id="todo-text" placeholder="Was muss erledigt werden?" required style="margin: 0;">
+      <select id="todo-cat" style="margin: 0;">
+        <option value="Haushalt">Haushalt</option>
+        <option value="Einkauf">Einkauf</option>
+        <option value="Erledigung">Erledigung</option>
+        <option value="Sonstiges">Sonstiges</option>
+      </select>
+      <button type="submit" class="btn">Hinzufügen</button>
+    </form>
+  </div>
+
+  <div class="card">
+    <div class="actions-bar">
+      <h3>Offene Aufgaben</h3>
+      <button class="btn btn-secondary" style="font-size: 0.8rem;" onclick="clearDoneTodos()">Erledigte löschen</button>
+    </div>
+    <ul class="todo-list" id="todo-list">
+      <li class="loading">Lade To-Dos...</li>
+    </ul>
+  </div>
+</section>
+
+<!-- TAB 2: ESSENSPLAN (Standardmäßig aktiv) -->
+<section id="essensplan" class="tab-content active" style="display: block;">
+  
+  <div class="sub-nav-container">
+    <nav class="sub-nav">
+      <button id="sub-btn-aktuell" class="active" onclick="switchSubTab('plan-aktuell')">📌 Aktueller Plan</button>
+      <button id="sub-btn-wochenplaene" onclick="switchSubTab('plan-wochenplaene')">📅 Wochenpläne</button>
+      <button id="sub-btn-gerichte" onclick="switchSubTab('plan-gerichte')">🍲 Gerichte</button>
+      <button id="sub-btn-kategorien" onclick="switchSubTab('plan-kategorien')">🏷️ Kategorien</button>
+    </nav>
+  </div>
+
+  <!-- SUB-TAB 2.1: AKTUELLES WOCHENPLAN -->
+  <div id="plan-aktuell" class="sub-tab-content active">
+    <div class="week-nav-selector">
+      <button id="btn-week-prev" onclick="changeSelectedWeek(-1)">‹ Vorherige</button>
+      <button id="btn-week-curr" class="active" onclick="changeSelectedWeek(0)">Diese Woche</button>
+      <button id="btn-week-next" onclick="changeSelectedWeek(1)">Nächste ›</button>
+    </div>
+
+    <div id="no-plan-container" class="card empty-state" style="display: none;">
+      <h3>🍽️ Kein Plan für <span id="no-plan-kw-title"></span></h3>
+      <p style="margin: 10px 0; color: var(--text-muted);">Möchtest du für diese Woche einen neuen Speiseplan anlegen?</p>
+      <button class="btn btn-accent" onclick="startNewPlanForCurrentSelectedKW()">➕ Plan erstellen</button>
+    </div>
+
+    <div id="plan-view-container" class="card">
+      <div class="actions-bar">
+        <h2 id="current-kw-display-title" style="font-size: 1.15rem;">KW</h2>
+        <div id="plan-action-buttons"></div>
+      </div>
+      <div id="week-content-area"></div>
+    </div>
+  </div>
+
+  <!-- SUB-TAB 2.2: GERICHTE & REZEPTE -->
+  <div id="plan-gerichte" class="sub-tab-content">
+    <div class="actions-bar">
+      <h2>🍲 Gerichte & Rezepte</h2>
+      <button class="btn btn-accent" onclick="openNewDishModal()">➕ Neues Gericht / Rezept</button>
+    </div>
+
+    <!-- TEIL 1: DIE REZEPTE (KACHELN) -->
+    <div class="card" style="margin-top: 12px;">
+      <h3 style="font-size: 1.1rem; border-bottom: 1px solid var(--border); padding-bottom: 6px; margin-bottom: 12px;">📖 Rezepte (mit Zubereitung)</h3>
+      <div class="recipe-grid" id="recipe-grid">
+        <p class="loading">Lade Rezepte...</p>
+      </div>
+    </div>
+
+    <!-- TEIL 2: ALLE GERICHTE (LISTE) -->
+    <div class="card">
+      <h3 style="font-size: 1.1rem; border-bottom: 1px solid var(--border); padding-bottom: 6px; margin-bottom: 12px;">📋 Alle Einzel-Gerichte & Beilagen</h3>
+      <div class="dish-list-table" id="all-dishes-list">
+        <p class="loading">Lade Gerichte...</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- SUB-TAB 2.3: KATEGORIEN VERWALTEN -->
+  <div id="plan-kategorien" class="sub-tab-content">
+    <div class="card">
+      <h3 style="margin-bottom: 10px;">🏷️ Neue Kategorie</h3>
+      <form onsubmit="addCategory(event)" style="display: flex; gap: 8px;">
+        <input type="text" id="new-cat-name" placeholder="z. B. 🍟 Beilage oder 🌮 Mexican" required style="margin: 0; flex: 1;">
+        <button type="submit" class="btn">Hinzufügen</button>
+      </form>
+    </div>
+
+    <div class="card">
+      <h3>Bestehende Kategorien</h3>
+      <div class="cat-table-list" id="category-table-list">
+        <p class="loading">Lade Kategorien...</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- SUB-TAB 2.4: WOCHENPLÄNE -->
+  <div id="plan-wochenplaene" class="sub-tab-content">
+    <div id="wochenplaene-list">
+      <p class="loading">Lade Pläne...</p>
+    </div>
+  </div>
+
+</section>
+
+<!-- TAB 3: EINKAUFSLISTE (Versteckt bis aktiviert) -->
+<section id="shopping" class="tab-content" style="display: none; flex-direction: column; height: calc(100vh - 120px); position: relative; padding-bottom: 70px;">
+  
+  <!-- 1. OBEN: Aktuelle Einkaufsliste (Zu kaufen) -->
+  <div class="card" style="margin-bottom: 12px;">
+    <div class="actions-bar" style="margin-bottom: 8px;">
+      <h3 style="margin: 0;">🛒 Einkaufsliste</h3>
+      <button class="btn btn-secondary" style="font-size: 0.8rem;" onclick="clearCheckedShoppingItems()">Erledigte löschen</button>
+    </div>
+    <div id="active-shopping-list">
+      <!-- Wird dynamisch gefüllt -->
+    </div>
+  </div>
+
+  <!-- 2. MITTE: Alle Artikel aus der Datenbank (als 3er-Grid) -->
+  <div class="card" style="flex: 1; overflow-y: auto; margin-bottom: 10px; display: flex; flex-direction: column;">
+    <h3 style="font-size: 1rem; margin-top: 0; margin-bottom: 12px;">📚 Artikel-Katalog</h3>
+    <div id="catalog-items-container" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;">
+      <!-- Hier landen die gefilterten Artikel im Kachel-Design -->
+    </div>
+  </div>
+
+  <!-- 3. UNTEN: Fixiertes Live-Suchfeld -->
+  <div style="position: absolute; bottom: 0; left: 0; right: 0; background: var(--bg-main, #f8fafc); padding: 10px 16px; border-top: 1px solid var(--border); border-radius: 0 0 12px 12px;">
+    <div style="position: relative; display: flex; gap: 8px;">
+      <input type="text" id="shopping-live-filter" placeholder="🔍 Artikel suchen oder neu anlegen..." oninput="filterShoppingCatalog(this.value)" style="flex: 1; padding: 10px 14px; border-radius: 8px; border: 1px solid var(--border); font-size: 0.9rem; outline: none; background: white; margin: 0;">
+      <button type="button" id="btn-add-new-item" class="btn btn-primary" style="display: none; white-space: nowrap;" onclick="addNewItemFromFilter()">+ Neu</button>
+    </div>
+  </div>
+
+</section>
+
+<!-- MODALS -->
+<div id="modal-add-recipe" class="modal-overlay">
+  <div class="modal-card">
+    <div class="modal-header">
+      <h3 id="modal-recipe-form-title">➕ Neues Gericht hinzufügen</h3>
+      <button class="modal-close" onclick="closeModal('modal-add-recipe')">&times;</button>
+    </div>
+    <form onsubmit="saveRecipeForm(event)">
+      <input type="hidden" id="recipe-edit-id" value="">
+
+      <label style="font-size:0.85rem; font-weight:600;">Name des Gerichts *</label>
+      <input type="text" id="recipe-name" placeholder="z. B. Burger, Linsen & Spätzle" required>
+
+      <label style="font-size:0.85rem; font-weight:600;">Kategorie</label>
+      <select id="recipe-cat"></select>
+
+      <div style="margin-top: 12px; margin-bottom: 12px; background: var(--bg-main, #f8fafc); padding: 10px 12px; border-radius: 8px; border: 1px solid var(--border);">
+        <label style="display: flex; align-items: center; gap: 10px; font-size: 0.85rem; font-weight: 600; cursor: pointer; margin: 0;">
+          <input type="checkbox" id="recipe-track-status" style="width: 18px; height: 18px; cursor: pointer; accent-color: var(--primary);">
+          <span>🔄 Abwechslungs-Status (Rot/Gelb/Grün)</span>
+        </label>
+        <span style="display: block; font-size: 0.75rem; color: var(--text-muted); margin-top: 4px; margin-left: 28px;">
+          Deaktivieren für Beilagen (wie Nudeln/Reis), damit diese neutral bleiben.
+        </span>
+      </div>
+
+      <div style="margin-top: 12px; margin-bottom: 16px;">
+        <label style="font-size:0.85rem; font-weight:600;">Zutaten für das Gericht</label>
+        <div id="selected-ingredients-chips" style="display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0;"></div>
+        <div style="position: relative; display: flex; gap: 6px;">
+          <div style="position: relative; flex: 1;">
+            <input type="text" id="ingredient-search-input" placeholder="Zutat antippen oder neu schreiben..." style="margin: 0; width: 100%;" oninput="handleIngredientInput(this.value)">
+            <div id="ingredient-suggestions-dropdown" style="display: none; position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid var(--border); border-radius: 6px; max-height: 150px; overflow-y: auto; z-index: 1000; box-shadow: 0 4px 6px rgba(0,0,0,0.1);"></div>
+          </div>
+          <button type="button" class="btn btn-secondary" onclick="addTypedIngredient()">Hinzufügen</button>
+        </div>
+      </div>
+
+      <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px;">
+        <button type="button" class="btn btn-secondary" onclick="closeModal('modal-add-recipe')">Abbrechen</button>
+        <button type="button" class="btn btn-accent" onclick="saveRecipeForm()">Speichern</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div id="modal-view-recipe" class="modal-overlay">
+  <div class="modal-card" style="max-width: 500px;">
+    <div class="modal-header">
+      <div>
+        <h3 id="view-recipe-title" style="margin: 0;">Gericht Name</h3>
+        <span id="view-recipe-cat" style="font-size: 0.8rem; color: var(--primary); font-weight: 600;">Kategorie</span>
+      </div>
+      <button class="modal-close" onclick="closeModal('modal-view-recipe')">&times;</button>
+    </div>
+
+    <div class="modal-body" style="margin-top: 12px;">
+      <h4 style="font-size: 0.9rem; margin-bottom: 6px;">🛒 Zutaten (Einkaufsliste)</h4>
+      <div id="view-recipe-chips" style="display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 16px;"></div>
+      <hr style="border: 0; border-top: 1px solid var(--border); margin: 16px 0;">
+      <div id="recipe-content-area"></div>
+    </div>
+
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 20px; padding-top: 12px; border-top: 1px solid var(--border);">
+      <button type="button" class="btn btn-danger" style="font-size: 0.85rem;" onclick="deleteActiveDish()">🗑️ Löschen</button>
+      <div style="display: flex; gap: 8px;">
+        <button type="button" class="btn btn-secondary" onclick="editActiveDishModal()">✏️ Gericht bearbeiten</button>
+        <button type="button" class="btn btn-secondary" onclick="closeModal('modal-view-recipe')">Schließen</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="recipe-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center; padding: 16px;">
+  <div style="background: var(--bg-main, #ffffff); width: 100%; max-width: 450px; border-radius: 16px; padding: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.15); display: flex; flex-direction: column; max-height: 85vh;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+      <h3 id="recipe-modal-title" style="font-size: 1.1rem; font-weight: 700; margin: 0;">Zutaten prüfen</h3>
+      <button onclick="closeRecipeModal()" style="background: none; border: none; font-size: 1.2rem; cursor: pointer; color: var(--text-muted);">✕</button>
+    </div>
+    <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0; margin-bottom: 12px;">
+      Hake an, was du <strong>schon zuhause</strong> hast. Alle nicht markierten Zutaten landen auf deiner Einkaufsliste.
+    </p>
+    <div id="recipe-ingredients-list" style="overflow-y: auto; flex: 1; display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; padding-right: 4px;"></div>
+    <button class="btn btn-primary" onclick="transferMissingIngredientsToShoppingList()" style="width: 100%; padding: 12px; font-weight: 600;">
+      🛒 Fehlende Zutaten zur Einkaufsliste hinzufügen
+    </button>
+  </div>
+</div>
+
+<div id="catalog-edit-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center; padding: 16px;">
+  <div style="background: var(--bg-main, #ffffff); width: 100%; max-width: 380px; border-radius: 16px; padding: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.15); display: flex; flex-direction: column;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+      <h3 style="font-size: 1.1rem; font-weight: 700; margin: 0;">Artikel verwalten</h3>
+      <button onclick="closeCatalogEditModal()" style="background: none; border: none; font-size: 1.2rem; cursor: pointer; color: var(--text-muted);">✕</button>
+    </div>
+    <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0; margin-bottom: 12px;">
+      Namen anpassen oder den Artikel dauerhaft aus dem Katalog löschen.
+    </p>
+    <input type="text" id="catalog-edit-input" style="width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 8px; font-size: 0.95rem; margin-bottom: 16px; box-sizing: border-box;" placeholder="Artikelname...">
+    <div style="display: flex; gap: 8px; justify-content: space-between;">
+      <button class="btn btn-secondary" onclick="deleteCatalogItem()" style="background: #fee2e2; color: #ef4444; border: 1px solid #fca5a5; padding: 8px 12px; font-size: 0.85rem; font-weight: 600; border-radius: 8px; cursor: pointer;">🗑️ Löschen</button>
+      <div style="display: flex; gap: 6px;">
+        <button class="btn btn-secondary" onclick="closeCatalogEditModal()" style="padding: 8px 12px; font-size: 0.85rem;">Abbrechen</button>
+        <button class="btn btn-primary" onclick="saveCatalogItemEdit()" style="padding: 8px 12px; font-size: 0.85rem;">Speichern</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+  <script>
+    // --- SUPABASE INITIALISIERUNG ---
+    const SUPABASE_URL = 'https://kyodeqhtxribkasxlleh.supabase.co';
+    const SUPABASE_ANON_KEY = 'sb_publishable__Gy8dhQyAEM--eMM-cpheg_L0NyupIi';
+    const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    const days = ['Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag', 'Sonntag'];
+    
+    let categoriesState = [];
+    let currentPlanState = null;
+    let recipesState = [];
+    let isEditingPlan = false;
+    let selectedWeekOffset = 0;
+    let ingredientCatalog = []; // Alle bekannten Zutaten aus der DB
+    let currentDishIngredients = []; // Zutaten, die für das aktuelle Gericht ausgewählt wurden
+    let currentViewDish = null; // Speichert das aktuell geöffnete Gericht
+    let currentShoppingList = []; // Array mit den Artikeln, die aktuell auf der Einkaufsliste stehen
+    let currentRecipeIngredients = [];
+    let activeEditingCatalogId = null;
+    let pressTimer = null;
+   
+    // Rezept-Detailansicht Status
+    let currentActiveRecipe = null;
+    let currentTargetServings = 4;
+    let currentStepIndex = 0;
+    let allSavedPlans = [];
+    let allPlansState = [];
+
+    function openModal(id) { document.getElementById(id).classList.add('active'); }
+    function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+
+    function getISOWeekDetails(offsetWeeks = 0) {
+      const now = new Date();
+      now.setDate(now.getDate() + (offsetWeeks * 7));
+      
+      const target = new Date(now.valueOf());
+      const dayNr = (now.getDay() + 6) % 7;
+      target.setDate(target.getDate() - dayNr + 3);
+      const firstThursday = target.valueOf();
+      target.setMonth(0, 1);
+      if (target.getDay() !== 4) {
+        target.setMonth(0, 1 + ((4 - target.getDay() + 7) % 7));
+      }
+      const weekNumber = 1 + Math.round((firstThursday - target.valueOf()) / 604800000);
+      const year = target.getFullYear();
+      
+      return { weekNumber, year, weekString: `KW ${weekNumber} (${year})` };
+    }
+
+    function switchMainTab(tabId) {
+      document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+      document.querySelectorAll('.main-nav button').forEach(el => el.classList.remove('active'));
+
+      document.getElementById(tabId).classList.add('active');
+      
+      if(tabId === 'todos') {
+        document.getElementById('btn-main-todos').classList.add('active');
+        fetchTodos();
+      } else {
+        document.getElementById('btn-main-essensplan').classList.add('active');
+        switchSubTab('plan-aktuell');
+      }
+    }
+
+    function switchSubTab(subTabId) {
+      document.querySelectorAll('.sub-tab-content').forEach(el => el.classList.remove('active'));
+      document.querySelectorAll('.sub-nav button').forEach(el => el.classList.remove('active'));
+
+      document.getElementById(subTabId).classList.add('active');
+
+      if (subTabId === 'plan-aktuell') {
+        document.getElementById('sub-btn-aktuell').classList.add('active');
+        fetchCurrentPlan();
+      }
+      if (subTabId === 'plan-gerichte') {
+        document.getElementById('sub-btn-gerichte').classList.add('active');
+        fetchCategories();
+        fetchRecipes();
+      }
+      if (subTabId === 'plan-kategorien') {
+        document.getElementById('sub-btn-kategorien').classList.add('active');
+        fetchCategories();
+      }
+      if (subTabId === 'plan-wochenplaene') {
+        document.getElementById('sub-btn-wochenplaene').classList.add('active');
+        fetchWochenplaene();
+      }
+    }
+
+    function updateWeekButtonsUI() {
+      const prevKwNum = getISOWeekDetails(-1).weekNumber;
+      const currKwNum = getISOWeekDetails(0).weekNumber;
+      const nextKwNum = getISOWeekDetails(1).weekNumber;
+
+      const btnPrev = document.getElementById('btn-week-prev');
+      const btnCurr = document.getElementById('btn-week-curr');
+      const btnNext = document.getElementById('btn-week-next');
+
+      btnPrev.innerText = `‹ KW ${prevKwNum}`;
+      btnCurr.innerText = `KW ${currKwNum} (Heute)`;
+      btnNext.innerText = `KW ${nextKwNum} ›`;
+
+      btnPrev.classList.toggle('active', selectedWeekOffset === -1);
+      btnCurr.classList.toggle('active', selectedWeekOffset === 0);
+      btnNext.classList.toggle('active', selectedWeekOffset === 1);
+    }
+
+    function changeSelectedWeek(offset) {
+      selectedWeekOffset = offset;
+      isEditingPlan = false;
+      fetchCurrentPlan();
+    }
+
+    // --- TO-DOS ---
+    async function fetchTodos() {
+      const { data, error } = await db.from('todos').select('*').order('created_at', { ascending: true });
+      if (error) { console.error(error); return; }
+      renderTodos(data);
+    }
+
+    function renderTodos(todos) {
+      const list = document.getElementById('todo-list');
+      if (!todos || todos.length === 0) {
+        list.innerHTML = '<li style="color: var(--text-muted); padding: 8px 0;">Keine Aufgaben vorhanden.</li>';
+        return;
+      }
+
+      list.innerHTML = todos.map(t => `
+        <li class="todo-item ${t.is_done ? 'done' : ''}">
+          <div class="todo-left">
+            <input type="checkbox" ${t.is_done ? 'checked' : ''} onchange="toggleTodo('${t.id}', ${t.is_done})">
+            <span>${t.text}</span>
+            <span class="todo-tag">${t.category || 'Sonstiges'}</span>
+          </div>
+          <button class="btn btn-danger" style="padding: 2px 6px; font-size: 0.75rem;" onclick="deleteTodo('${t.id}')">✕</button>
+        </li>
+      `).join('');
+    }
+
+    async function addTodo(e) {
+      e.preventDefault();
+      const input = document.getElementById('todo-text');
+      const cat = document.getElementById('todo-cat');
+
+      const { error } = await db.from('todos').insert([{ text: input.value, category: cat.value, is_done: false }]);
+      if (error) { alert(error.message); return; }
+      input.value = '';
+      fetchTodos();
+    }
+
+    async function toggleTodo(id, currentDoneStatus) {
+      await db.from('todos').update({ is_done: !currentDoneStatus }).eq('id', id);
+      fetchTodos();
+    }
+
+    async function deleteTodo(id) {
+      await db.from('todos').delete().eq('id', id);
+      fetchTodos();
+    }
+
+    async function clearDoneTodos() {
+      await db.from('todos').delete().eq('is_done', true);
+      fetchTodos();
+    }
+
+// --- KATEGORIEN ---
+
+// 1. Laden: Sortiert nach sort_order statt 'name'
+async function fetchCategories() {
+  const { data, error } = await db
+    .from('food_categories')
+    .select('*')
+    .order('sort_order', { ascending: true, nullsFirst: false });
+
+  if (error) { console.error(error); return; }
+  categoriesState = data || [];
+  renderCategories();
+  renderCategoryDropdown();
+}
+
+// 2. Ansicht mit Hoch/Runter-Buttons (▲ / ▼)
+function renderCategories() {
+  const tableList = document.getElementById('category-table-list');
+  if (!tableList) return;
+  if (categoriesState.length === 0) {
+    tableList.innerHTML = '<p style="color: var(--text-muted);">Keine Kategorien vorhanden.</p>';
+    return;
+  }
+
+  tableList.innerHTML = categoriesState.map((c, index) => `
+    <div class="cat-row" style="display:flex; justify-content:space-between; align-items:center; padding: 6px 0;">
+      <span style="font-weight: 600;">${c.name}</span>
+      <div style="display:flex; gap: 4px;">
+        <button class="btn btn-secondary" style="padding: 4px 8px; font-size: 0.8rem;" onclick="moveCategory(${index}, 'up')">▲</button>
+        <button class="btn btn-secondary" style="padding: 4px 8px; font-size: 0.8rem;" onclick="moveCategory(${index}, 'down')">▼</button>
+        <button class="btn btn-secondary" style="padding: 4px 8px; font-size: 0.8rem;" onclick="editCategory('${c.id}', '${c.name.replace(/'/g, "\\'")}')">✏️</button>
+        <button class="btn btn-danger" style="padding: 4px 8px; font-size: 0.8rem;" onclick="deleteCategory('${c.id}', '${c.name.replace(/'/g, "\\'")}')">🗑️</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+// 3. NEU: Position per Klick ändern & in Supabase tauschen
+async function moveCategory(index, direction) {
+  const targetIndex = direction === 'up' ? index - 1 : index + 1;
+  if (targetIndex < 0 || targetIndex >= categoriesState.length) return;
+
+  // 1. Kategorien im lokalen Array an die neue Position tauschen
+  const temp = categoriesState[index];
+  categoriesState[index] = categoriesState[targetIndex];
+  categoriesState[targetIndex] = temp;
+
+  // 2. Allen Kategorien eine eindeutige fortlaufende Nummer (1, 2, 3...) zuweisen und speichern
+  const updatePromises = categoriesState.map((cat, idx) => {
+    const newOrder = idx + 1;
+    cat.sort_order = newOrder; // lokalen State aktualisieren
+    return db.from('food_categories').update({ sort_order: newOrder }).eq('id', cat.id);
+  });
+
+  // Warten, bis alle Positionen in Supabase gespeichert sind
+  await Promise.all(updatePromises);
+
+  // 3. Ansichten neu rendern
+  renderCategories();
+  renderCategoryDropdown();
+  if (typeof renderWeekPlan === 'function') renderWeekPlan();
+}
+
+function renderCategoryDropdown() {
+  const select = document.getElementById('recipe-cat');
+  if (!select) return;
+  select.innerHTML = categoriesState.map(c => `<option value="${c.name}">${c.name}</option>`).join('');
+}
+
+// 4. Hinzufügen: Neue Kategorie bekommt automatisch die nächste sort_order
+async function addCategory(e) {
+  e.preventDefault();
+  const input = document.getElementById('new-cat-name');
+  const name = input.value.trim();
+  if (!name) return;
+
+  const nextOrder = categoriesState.length > 0 
+    ? Math.max(...categoriesState.map(c => c.sort_order || 0)) + 1 
+    : 1;
+
+  const { error } = await db.from('food_categories').insert([{ name, sort_order: nextOrder }]);
+  if (error) { alert(error.message); return; }
+
+  input.value = '';
+  await fetchCategories();
+}
+
+async function editCategory(id, oldName) {
+  const newName = prompt(`Kategorie "${oldName}" umbenennen in:`, oldName);
+  if (!newName || newName.trim() === '' || newName === oldName) return;
+
+  const { error } = await db.from('food_categories').update({ name: newName.trim() }).eq('id', id);
+  if (error) { alert(error.message); return; }
+
+  await db.from('recipes').update({ category: newName.trim() }).eq('category', oldName);
+  await fetchCategories();
+}
+
+async function deleteCategory(id, name) {
+  if (confirm(`Möchtest du die Kategorie "${name}" wirklich löschen?`)) {
+    await db.from('food_categories').delete().eq('id', id);
+    await db.from('recipes').update({ category: '📌 Sonstiges' }).eq('category', name);
+    await fetchCategories();
+  }
+}
+
+    // --- ESSENSPLAN ---
+    async function fetchCurrentPlan() {
+      updateWeekButtonsUI();
+      await fetchCategories();
+
+      const targetKWString = getISOWeekDetails(selectedWeekOffset).weekString;
+      const { data, error } = await db.from('meal_plans').select('*').eq('week_name', targetKWString).limit(1);
+
+      if (error) { console.error(error); return; }
+      currentPlanState = (data && data.length > 0) ? data[0] : null;
+      
+      const { data: recipeData } = await db.from('recipes').select('*').order('name', { ascending: true });
+      recipesState = recipeData || [];
+
+      renderWeekPlan();
+    }
+
+    function buildRecipeDropdownOptions() {
+  if (recipesState.length === 0) {
+    return `<div style="padding: 10px; color: var(--text-muted); font-size: 0.85rem;">(Keine Gerichte vorhanden)</div>`;
+  }
+
+  let html = `
+    <div style="display: flex; justify-content: space-between; align-items: center; padding: 4px 6px 8px 6px; border-bottom: 1px solid var(--border); margin-bottom: 4px;">
+      <span style="font-weight: 700; font-size: 0.9rem;">Gerichte auswählen</span>
+      <button type="button" onclick="closeAllCustomDropdowns()" style="background: none; border: none; font-size: 1.2rem; cursor: pointer; color: var(--text-muted); padding: 0 4px; line-height: 1;">&times;</button>
+    </div>
+  `;
+
+  categoriesState.forEach(cat => {
+    const catRecipes = recipesState.filter(r => (r.category || '📌 Sonstiges') === cat.name);
+    
+    if (catRecipes.length > 0) {
+      html += `
+        <div style="font-size: 0.72rem; font-weight: 700; color: var(--text-muted); padding: 6px 6px 2px 6px; text-transform: uppercase; border-bottom: 1px solid var(--border); margin-top: 4px;">
+          --- ${cat.name} ---
+        </div>
+      `;
+
+      catRecipes.forEach(r => {
+        // Hier übergeben wir das ganze Rezept-Objekt r (nicht nur r.name)
+        const status = getRecipeStatusColor(r);
+
+        // Standard für neutrale Zeilen (ohne Status-Tracking)
+        let bgColor = '#ffffff';
+        let textColor = 'var(--text)';
+        let borderColor = 'var(--border)';
+
+        // Nur wenn track_status aktiv ist, greifen die Farben:
+        if (status.color === '#ef4444') {
+          bgColor = '#fee2e2';
+          textColor = '#991b1b';
+          borderColor = '#fca5a5';
+        } else if (status.color === '#eab308') {
+          bgColor = '#fef9c3';
+          textColor = '#854d0e';
+          borderColor = '#fde047';
+        } else if (status.color === '#22c55e') {
+          bgColor = '#dcfce7';
+          textColor = '#166534';
+          borderColor = '#86efac';
+        }
+
+        const cleanName = r.name.replace(/'/g, "\\'");
+
+        html += `
+          <div class="custom-dropdown-item" 
+               onclick="toggleMealCheckbox(this, event)" 
+               style="padding: 6px 10px; margin: 3px 0; border-radius: 6px; background-color: ${bgColor}; color: ${textColor}; border: 1px solid ${borderColor}; font-weight: 600; font-size: 0.85rem; cursor: pointer; display: flex; align-items: center; gap: 10px;">
+            <input type="checkbox" class="meal-select-checkbox" value="${cleanName}" onclick="event.stopPropagation()" style="width: 16px; height: 16px; margin: 0; cursor: pointer; accent-color: var(--primary); flex-shrink: 0;">
+            <div style="flex: 1; display: flex; justify-content: space-between; align-items: center; min-width: 0;">
+              <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${r.name}</span>
+              ${status.label ? `<span style="font-size: 0.68rem; opacity: 0.85; font-weight: normal; margin-left: 8px; flex-shrink: 0;">${status.label}</span>` : ''}
+            </div>
+          </div>
+        `;
+      });
+    }
+  });
+
+  html += `
+    <div style="position: sticky; bottom: -6px; background: white; padding: 8px 0 2px 0; border-top: 1px solid var(--border); margin-top: 6px; text-align: right;">
+      <button type="button" class="btn btn-accent" onclick="confirmMealSelection(this)" style="width: 100%; padding: 8px; font-weight: 600; font-size: 0.85rem;">
+        ✓ Ausgewählte Gerichte übernehmen
+      </button>
+    </div>
+  `;
+
+  return html;
+}
+
+function renderWeekPlan() {
+  const noPlanContainer = document.getElementById('no-plan-container');
+  const planViewContainer = document.getElementById('plan-view-container');
+  const weekContentArea = document.getElementById('week-content-area');
+  const titleDisplay = document.getElementById('current-kw-display-title');
+  const actionButtons = document.getElementById('plan-action-buttons');
+  
+  const targetKWString = getISOWeekDetails(selectedWeekOffset).weekString;
+
+  if (!currentPlanState) {
+    document.getElementById('no-plan-kw-title').innerText = targetKWString;
+    noPlanContainer.style.display = 'block';
+    planViewContainer.style.display = 'none';
+    return;
+  }
+
+  noPlanContainer.style.display = 'none';
+  planViewContainer.style.display = 'block';
+
+  titleDisplay.innerText = currentPlanState.week_name;
+
+  if (isEditingPlan) {
+    actionButtons.innerHTML = `
+      <button class="btn btn-secondary" style="padding:4px 8px; font-size:0.8rem;" onclick="cancelEditing()">Abbrechen</button>
+      <button class="btn btn-accent" style="padding:4px 10px; font-size:0.8rem;" onclick="saveAndFinishEdit()">Fertig</button>
+    `;
+
+    const dropdownOptions = buildRecipeDropdownOptions();
+
+    weekContentArea.innerHTML = `
+      <div class="grid-week-edit">
+        ${days.map(day => {
+          const mealValue = (currentPlanState.meals && currentPlanState.meals[day]) ? currentPlanState.meals[day] : '';
+          return `
+            <div class="day-card-edit" style="margin-bottom: 12px;">
+              <h4 style="margin-bottom: 6px;">${day}</h4>
+              
+              <textarea 
+                id="input-day-${day}" 
+                placeholder="Was gibt's zu essen?" 
+                style="width: 100%; box-sizing: border-box;"
+                onchange="updateMeal('${day}', this.value)"
+              >${mealValue}</textarea>
+
+              <!-- CUSTOM DROPDOWN SYSTEM -->
+              <div class="custom-dropdown" style="position: relative; width: 100%; margin-top: 6px;">
+                <div class="dropdown-trigger" onclick="toggleDropdown(this)" style="padding: 8px 12px; border: 1px solid var(--border); border-radius: 6px; background: white; cursor: pointer; display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem;">
+                  <span class="selected-text" style="color: var(--text-muted);">+ aus Gerichten wählen...</span>
+                  <span style="font-size: 0.7rem; color: var(--text-muted);">▼</span>
+                </div>
+
+                <div class="dropdown-menu" style="display: none; position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid var(--border); border-radius: 8px; max-height: 500px; overflow-y: auto; z-index: 1000; box-shadow: 0 4px 12px rgba(0,0,0,0.15); margin-top: 4px; padding: 6px;">
+                  ${dropdownOptions}
+                </div>
+              </div>
+
+            </div>
+          `;
+        }).join('')}
+      </div>
+    `;
+  } else {
+    actionButtons.innerHTML = `
+      <button class="btn btn-primary" style="padding:4px 10px; font-size:0.8rem;" onclick="enableEditing()">✏️ Bearbeiten</button>
+    `;
+
+    weekContentArea.innerHTML = `
+      <div class="compact-week-list">
+        ${days.map(d => {
+          const meal = currentPlanState.meals ? currentPlanState.meals[d] : '';
+          const hasMeal = meal && meal !== '-' && !meal.toLowerCase().includes('reste');
+          
+          const clickAttr = hasMeal 
+            ? `onclick="openRecipeIngredients('${meal.replace(/'/g, "\\'")}')" style="cursor: pointer; color: var(--primary); font-weight: 500;" title="Klicken, um Zutaten auf die Einkaufsliste zu setzen"` 
+            : '';
+
+          return `
+            <div class="compact-day-row">
+              <span class="compact-day-name">${d}:</span>
+              <span class="compact-day-meal ${!meal ? 'empty' : ''}" ${clickAttr}>${meal || '-'}</span>
+            </div>
+          `;
+        }).join('')}
+      </div>
+    `;
+  }
+}
+
+    function enableEditing() { isEditingPlan = true; renderWeekPlan(); }
+    function cancelEditing() { isEditingPlan = false; fetchCurrentPlan(); }
+
+    async function saveAndFinishEdit() {
+  await saveCurrentPlan();
+
+  // Nach dem Speichern die Pläne neu abrufen, damit der Status (Rot/Gelb/Grün) sofort stimmt
+  if (typeof fetchWochenplaene === 'function') {
+    await fetchWochenplaene();
+  }
+
+  isEditingPlan = false;
+  renderWeekPlan();
+}
+
+    function addRecipeToDay(day, recipeName) {
+      if (!recipeName) return;
+      const current = currentPlanState.meals[day] || '';
+      currentPlanState.meals[day] = current ? `${current}, ${recipeName}` : recipeName;
+      saveCurrentPlan();
+      renderWeekPlan();
+    }
+
+    function startNewPlanForCurrentSelectedKW() {
+      const targetKWString = getISOWeekDetails(selectedWeekOffset).weekString;
+      currentPlanState = {
+        id: null,
+        week_name: targetKWString,
+        meals: { Montag: '', Dienstag: '', Mittwoch: '', Donnerstag: '', Freitag: '', Samstag: '', Sonntag: '' }
+      };
+      isEditingPlan = true;
+      renderWeekPlan();
+    }
+
+    async function updateMeal(day, value) {
+      if (!currentPlanState.meals) currentPlanState.meals = {};
+      currentPlanState.meals[day] = value;
+      saveCurrentPlan();
+    }
+
+    async function saveCurrentPlan() {
+      if (!currentPlanState) return;
+
+      const payload = {
+        week_name: currentPlanState.week_name,
+        meals: currentPlanState.meals,
+        is_archived: false
+      };
+
+      if (currentPlanState.id) {
+        await db.from('meal_plans').update(payload).eq('id', currentPlanState.id);
+      } else {
+        const { data } = await db.from('meal_plans').insert([payload]).select();
+        if (data && data.length > 0) currentPlanState.id = data[0].id;
+      }
+    }
+
+    // --- GERICHTE & REZEPTE LOGIK ---
+    async function fetchRecipes() {
+      const { data, error } = await db.from('recipes').select('*').order('name', { ascending: true });
+      if (error) { console.error(error); return; }
+      recipesState = data || [];
+      renderRecipesAndDishes();
+    }
+
+    function renderRecipesAndDishes() {
+  // 1. REZEPTE (NUR GERICHETE MIT EXPLICITEM HAKEN has_recipe === true)
+  const recipeGrid = document.getElementById('recipe-grid');
+  const recipesOnly = recipesState.filter(r => r.has_recipe === true);
+
+  if (recipesOnly.length === 0) {
+    recipeGrid.innerHTML = '<p style="color: var(--text-muted);">Noch keine Rezepte mit Zubereitung angelegt.</p>';
+  } else {
+    recipeGrid.innerHTML = recipesOnly.map(r => {
+      const status = getRecipeStatusColor(r.name);
+      
+      // Farblicher linken Rand setzen, falls eine Farbe zugewiesen ist
+      const borderStyle = status.color !== 'transparent' ? `border-left: 6px solid ${status.color};` : 'border-left: 1px solid var(--border);';
+      
+      // Keckes Badge nur anzeigen, wenn das Gericht eine Relevanz hat
+      const badgeHtml = status.label ? `<span style="font-size: 0.7rem; padding: 2px 6px; border-radius: 4px; background: ${status.bg}; color: ${status.color}; font-weight: 600;">${status.label}</span>` : '';
+
+      return `
+        <div class="recipe-card" onclick="openDishDetailsModal('${r.id}')" style="cursor: pointer; ${borderStyle} padding: 12px; border-radius: 8px; margin-bottom: 8px;">
+          <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+            <div>
+              <h4 style="font-size: 0.95rem; margin-bottom: 4px; color: var(--text);">${r.name}</h4>
+              <span style="color: var(--primary); font-size: 0.75rem; font-weight: 600;">${r.category || '📌 Sonstiges'}</span>
+            </div>
+            ${badgeHtml}
+          </div>
+          <span style="font-size: 0.75rem; color: var(--text-muted); margin-top: 10px; display: block;">📖 Rezept ansehen</span>
+        </div>
+      `;
+    }).join('');
+  }
+
+  // 2. ALLE GERICHTE (CLEANE LISTE - JEDE ZEILE KLICKBAR & FARBIG MARKIERT)
+  const allDishesList = document.getElementById('all-dishes-list');
+  if (recipesState.length === 0) {
+    allDishesList.innerHTML = '<p style="color: var(--text-muted);">Noch keine Gerichte eingetragen.</p>';
+  } else {
+    allDishesList.innerHTML = recipesState.map(r => {
+      const status = getRecipeStatusColor(r.name);
+      
+      // Punkt für den Status (🔴, 🟡, 🟢 oder gar keiner bei 3 Wochen)
+      let dot = '';
+      if (status.color === '#ef4444') dot = '<span style="color: #ef4444; margin-right: 6px;">🔴</span>';
+      if (status.color === '#eab308') dot = '<span style="color: #eab308; margin-right: 6px;">🟡</span>';
+      if (status.color === '#22c55e') dot = '<span style="color: #22c55e; margin-right: 6px;">🟢</span>';
+
+      return `
+        <div class="dish-list-row" onclick="openDishDetailsModal('${r.id}')" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center; padding: 10px; border-bottom: 1px solid var(--border);">
+          <div style="display: flex; align-items: center;">
+            ${dot}
+            <div>
+              <strong style="color: var(--text);">${r.name}</strong>
+              <span style="font-size: 0.75rem; color: var(--text-muted); margin-left: 8px;">(${r.category || '📌 Sonstiges'})</span>
+            </div>
+          </div>
+          <div style="display: flex; gap: 6px; align-items: center;">
+            ${r.has_recipe === true ? '<span style="font-size: 0.7rem; background: #dbeafe; color: var(--primary); padding: 2px 6px; border-radius: 4px; font-weight: 600;">📖 mit Rezept</span>' : ''}
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+}
+
+// 1. Detail-Modal öffnen
+async function openDishDetailsModal(dishId) {
+  // Wichtig: Erst den Zutaten-Katalog aus Supabase laden, damit das Autocomplete in den Zeilen funktioniert!
+  await fetchIngredientCatalog();
+
+  currentViewDish = recipesState.find(r => r.id === dishId);
+  if (!currentViewDish) return;
+
+  // Titel & Kategorie setzen
+  document.getElementById('view-recipe-title').innerText = currentViewDish.name;
+  document.getElementById('view-recipe-cat').innerText = currentViewDish.category || '📌 Sonstiges';
+
+  // Grobe Zutaten-Chips anzeigen
+  const chipsContainer = document.getElementById('view-recipe-chips');
+  chipsContainer.innerHTML = '';
+  if (currentViewDish.ingredients && currentViewDish.ingredients.length > 0) {
+    currentViewDish.ingredients.forEach(ing => {
+      chipsContainer.innerHTML += `<span style="background: var(--bg-secondary, #f1f5f9); padding: 3px 8px; border-radius: 12px; font-size: 0.8rem; border: 1px solid var(--border);">${ing}</span>`;
+    });
+  } else {
+    chipsContainer.innerHTML = '<span style="color: var(--text-muted); font-size: 0.8rem;">Keine Zutaten hinterlegt.</span>';
+  }
+
+  // Rezept-Bereich (Anleitung oder Checkbox) rendern
+  renderRecipeArea();
+
+  openModal('modal-view-recipe');
+}
+
+// 2. Entscheidungs-Logik: Existiert schon ein Rezept oder anzeigen/bearbeiten?
+function renderRecipeArea(showEditForm = false) {
+  const container = document.getElementById('recipe-content-area');
+  if (!container) return;
+
+  // Falls noch kein Rezept da ist oder das Formular geöffnet werden soll:
+  if (showEditForm || !currentViewDish.has_recipe) {
+    container.innerHTML = `
+      <label class="checkbox-label" style="display: flex; align-items: center; gap: 8px; font-weight: 600; cursor: pointer; margin-bottom: 12px;">
+        <input type="checkbox" id="toggle-recipe-checkbox" ${currentViewDish.has_recipe ? 'checked' : ''} onchange="toggleRecipeFormDisplay(this.checked)">
+        <span>📖 Rezept & Zubereitung hinzufügen</span>
+      </label>
+
+      <div id="recipe-form-fields" style="display: ${currentViewDish.has_recipe ? 'block' : 'none'}; background: #f8fafc; padding: 12px; border-radius: 8px; border: 1px solid var(--border);">
+        <label style="font-size:0.8rem; font-weight:600; display:block; margin-bottom: 4px;">Portionen (Personen)</label>
+        <input type="number" id="detail-servings" value="${currentViewDish.servings || 4}" min="1" style="width: 100px; margin-bottom: 12px;">
+
+        <label style="font-size:0.8rem; font-weight:600; display:block; margin-bottom: 6px;">Zutaten mit Mengenangaben für die Neuberechnung:</label>
+        <div id="detailed-ingredients-rows-container" style="margin-bottom: 12px;">
+          <!-- Hier werden die strukturierten Zeilen eingefügt -->
+        </div>
+        <button type="button" class="btn btn-secondary" style="font-size: 0.8rem; margin-bottom: 16px;" onclick="addDetailedIngredientRow()">+ Zutat hinzufügen</button>
+
+        <label style="font-size:0.8rem; font-weight:600; display:block; margin-bottom: 4px;">Schritt-für-Schritt Anleitung (jede Zeile ein Schritt)</label>
+        <textarea id="detail-steps" rows="4" placeholder="1. Fleisch anbraten...&#10;2. Brötchen toasten..." style="width: 100%; margin-bottom: 12px; font-size: 0.85rem;">${(currentViewDish.steps || []).join('\n')}</textarea>
+
+        <button type="button" class="btn btn-accent" style="width: 100%;" onclick="saveDetailedRecipeStructured()">Rezept speichern</button>
+      </div>
+    `;
+
+    // Bestehende strukturierte Zutaten laden oder eine leere Zeile anbieten
+    populateDetailedIngredientRows(currentViewDish.detailed_ingredients_structured || []);
+
+  } else {
+    // Es gibt bereits ein Rezept -> Fertige Ansicht mit skalierten Portionen anzeigen
+    const servings = currentViewDish.servings || 4;
+    const ingredientsHtml = (currentViewDish.detailed_ingredients_structured || []).map(i => {
+      // Wenn Mengen vorhanden sind, können wir sie hier für die Anzeige anzeigen
+      return `<li>${i.amount ? i.amount + ' ' : ''}${i.unit || ''} ${i.name}</li>`;
+    }).join('');
+
+    const stepsList = (currentViewDish.steps || []).map(s => `<li>${s}</li>`).join('');
+
+    container.innerHTML = `
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+        <h4 style="font-size: 0.9rem; margin: 0;">📖 Rezept (für ${servings} Personen)</h4>
+        <button class="btn btn-secondary" style="font-size: 0.75rem; padding: 2px 6px;" onclick="renderRecipeArea(true)">✏️ Rezept bearbeiten</button>
+      </div>
+      
+      ${ingredientsHtml ? `<ul style="font-size: 0.85rem; padding-left: 20px; margin-bottom: 12px;">${ingredientsHtml}</ul>` : '<p style="font-size:0.8rem; color:var(--text-muted);">Keine strukturierten Zutaten hinterlegt.</p>'}
+      
+      <h5 style="font-size: 0.85rem; margin-bottom: 4px;">Zubereitung:</h5>
+      <ol style="font-size: 0.85rem; padding-left: 20px;">${stepsList || 'Keine Schritte angegeben.'}</ol>
+    `;
+  }
+}
+
+// Hilfsfunktion: Zeile für strukturierte Zutat hinzufügen (Menge, Einheit, Name)
+function addDetailedIngredientRow(amount = '', unit = 'g', name = '') {
+  const container = document.getElementById('detailed-ingredients-rows-container');
+  if (!container) return;
+
+  const row = document.createElement('div');
+  row.style.cssText = 'display: flex; gap: 6px; margin-bottom: 6px; align-items: center; position: relative;';
+  row.className = 'structured-ingredient-row';
+  
+  row.innerHTML = `
+    <input type="number" class="ing-amount" placeholder="Menge" value="${amount}" style="width: 70px; margin: 0;">
+    <select class="ing-unit" style="width: 80px; margin: 0;">
+      <option value="g" ${unit === 'g' ? 'selected' : ''}>g</option>
+      <option value="kg" ${unit === 'kg' ? 'selected' : ''}>kg</option>
+      <option value="ml" ${unit === 'ml' ? 'selected' : ''}>ml</option>
+      <option value="l" ${unit === 'l' ? 'selected' : ''}>l</option>
+      <option value="EL" ${unit === 'EL' ? 'selected' : ''}>EL</option>
+      <option value="TL" ${unit === 'TL' ? 'selected' : ''}>TL</option>
+      <option value="Prise" ${unit === 'Prise' ? 'selected' : ''}>Prise</option>
+      <option value="Stk." ${unit === 'Stk.' ? 'selected' : ''}>Stk.</option>
+      <option value="" ${!unit ? 'selected' : ''}>-</option>
+    </select>
+    
+    <!-- Zutaten-Name mit Autocomplete-Anbindung -->
+    <div style="position: relative; flex: 1; margin: 0;">
+      <input type="text" class="ing-name" placeholder="Zutatenname" value="${name}" style="width: 100%; margin: 0;" oninput="handleRowIngredientInput(this)">
+      <div class="row-ingredient-dropdown" style="display: none; position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid var(--border); border-radius: 6px; max-height: 140px; overflow-y: auto; z-index: 1000; box-shadow: 0 4px 6px rgba(0,0,0,0.1);"></div>
+    </div>
+
+    <button type="button" class="btn btn-secondary" style="padding: 4px 8px; font-size: 0.8rem;" onclick="this.parentElement.remove()">✕</button>
+  `;
+  container.appendChild(row);
+}
+
+function handleRowIngredientInput(inputEl) {
+  const row = inputEl.closest('.structured-ingredient-row');
+  const dropdown = row.querySelector('.row-ingredient-dropdown');
+  const query = inputEl.value.trim().toLowerCase();
+
+  if (!query) {
+    dropdown.style.display = 'none';
+    dropdown.innerHTML = '';
+    return;
+  }
+
+  // Aus dem globalen ingredientCatalog filtern
+  const matches = ingredientCatalog.filter(item => 
+    item.name && item.name.toLowerCase().includes(query)
+  );
+
+  dropdown.innerHTML = '';
+
+  if (matches.length > 0) {
+    matches.forEach(match => {
+      const div = document.createElement('div');
+      div.style.cssText = 'padding: 6px 10px; cursor: pointer; border-bottom: 1px solid var(--border); font-size: 0.85rem;';
+      div.innerText = match.name;
+      div.onmousedown = () => {
+        inputEl.value = match.name;
+        dropdown.style.display = 'none';
+      };
+      dropdown.appendChild(div);
+    });
+  } else {
+    // Option zum Neuladen in die Datenbank direkt aus der Zeile heraus
+    const div = document.createElement('div');
+    div.style.cssText = 'padding: 6px 10px; cursor: pointer; color: var(--primary); font-weight: 600; font-size: 0.85rem;';
+    div.innerText = `➕ "${inputEl.value.trim()}" neu anlegen`;
+    div.onmousedown = async () => {
+      const val = inputEl.value.trim();
+      // Direkt in Supabase eintragen
+      const { data, error } = await db
+        .from('ingredient_catalog')
+        .insert([{ name: val }])
+        .select();
+
+      if (!error && data && data.length > 0) {
+        ingredientCatalog.push(data[0]);
+        ingredientCatalog.sort((a, b) => a.name.localeCompare(b.name));
+      }
+
+      inputEl.value = val;
+      dropdown.style.display = 'none';
+    };
+    dropdown.appendChild(div);
+  }
+
+  dropdown.style.display = 'block';
+}
+
+function populateDetailedIngredientRows(rowsArray) {
+  const container = document.getElementById('detailed-ingredients-rows-container');
+  if (!container) return;
+  container.innerHTML = '';
+
+  if (rowsArray && rowsArray.length > 0) {
+    rowsArray.forEach(item => {
+      addDetailedIngredientRow(item.amount, item.unit, item.name);
+    });
+  } else {
+    addDetailedIngredientRow(); // Mindestens eine leere Zeile als Start
+  }
+}
+
+// Strukturierte Daten einsammeln und speichern
+async function saveDetailedRecipeStructured() {
+  if (!currentViewDish) return;
+
+  const isChecked = document.getElementById('toggle-recipe-checkbox').checked;
+  const servings = parseInt(document.getElementById('detail-servings').value) || 4;
+  
+  // Alle strukturierten Zutaten-Zeilen auslesen
+  const rowElements = document.querySelectorAll('.structured-ingredient-row');
+  const detailed_ingredients_structured = [];
+
+  rowElements.forEach(row => {
+    const amount = row.querySelector('.ing-amount').value.trim();
+    const unit = row.querySelector('.ing-unit').value;
+    const name = row.querySelector('.ing-name').value.trim();
+
+    if (name) {
+      detailed_ingredients_structured.push({ amount, unit, name });
+    }
+  });
+
+  const rawSteps = document.getElementById('detail-steps').value;
+  const steps = rawSteps.split('\n').map(s => s.trim()).filter(Boolean);
+
+  const updateData = {
+    has_recipe: isChecked,
+    servings: servings,
+    detailed_ingredients_structured: detailed_ingredients_structured,
+    steps: steps
+  };
+
+  const { error } = await db
+    .from('recipes')
+    .update(updateData)
+    .eq('id', currentViewDish.id);
+
+  if (error) {
+    alert('Fehler beim Speichern: ' + error.message);
+    return;
+  }
+
+  // Lokalen Status aktualisieren
+  Object.assign(currentViewDish, updateData);
+
+  // Zur Ansicht wechseln
+  renderRecipeArea(false);
+
+  if (typeof fetchRecipes === 'function') fetchRecipes();
+}
+
+// 3. Ein-/Ausblenden der Formularfelder per Checkbox
+function toggleRecipeFormDisplay(isChecked) {
+  const fields = document.getElementById('recipe-form-fields');
+  if (fields) fields.style.display = isChecked ? 'block' : 'none';
+}
+
+// 4. Rezept-Zubereitung in Supabase speichern
+async function saveDetailedRecipe() {
+  if (!currentViewDish) return;
+
+  const isChecked = document.getElementById('toggle-recipe-checkbox').checked;
+  
+  const servings = parseInt(document.getElementById('detail-servings').value) || 4;
+  const rawQuantities = document.getElementById('detail-quantities').value;
+  const rawSteps = document.getElementById('detail-steps').value;
+
+  // Zeilenweise in Arrays umwandeln
+  const detailed_ingredients = rawQuantities.split('\n').map(s => s.trim()).filter(Boolean);
+  const steps = rawSteps.split('\n').map(s => s.trim()).filter(Boolean);
+
+  const updateData = {
+    has_recipe: isChecked,
+    servings: servings,
+    detailed_ingredients: detailed_ingredients,
+    steps: steps
+  };
+
+  const { error } = await db
+    .from('recipes')
+    .update(updateData)
+    .eq('id', currentViewDish.id);
+
+  if (error) {
+    alert('Fehler beim Speichern des Rezepts: ' + error.message);
+    return;
+  }
+
+  // Lokalen Status aktualisieren
+  Object.assign(currentViewDish, updateData);
+
+  // Ansicht im Modal auf die fertige Rezeptanzeige umschalten
+  renderRecipeArea(false);
+
+  // Hauptliste im Hintergrund aktualisieren
+  if (typeof fetchRecipes === 'function') fetchRecipes();
+}
+
+// 5. Button-Aktionen ganz unten
+function editActiveDishModal() {
+  if (!currentViewDish) return;
+  closeModal('modal-view-recipe');
+  openEditRecipeModal(currentViewDish.id);
+}
+
+async function deleteActiveDish() {
+  if (!currentViewDish) return;
+  if (confirm(`Möchtest du "${currentViewDish.name}" wirklich löschen?`)) {
+    await deleteRecipe(currentViewDish.id);
+    closeModal('modal-view-recipe');
+  }
+}
+
+    // Funktion für Zutaten Hinzufügen
+
+    // 1. Neue Zeile für ein einfaches Zutaten-Wort hinzufügen
+function addIngredientInputRow(value = '') {
+  const container = document.getElementById('ingredients-inputs-container');
+  if (!container) return;
+
+  const row = document.createElement('div');
+  row.style.cssText = 'display: flex; gap: 6px; margin-bottom: 6px;';
+  
+  row.innerHTML = `
+    <input type="text" class="simple-ingredient-input" placeholder="z. B. Hackfleisch" value="${value}" style="margin: 0; flex: 1;">
+    <button type="button" class="btn btn-secondary" style="padding: 4px 8px; font-size: 0.8rem;" onclick="this.parentElement.remove()">✕</button>
+  `;
+  container.appendChild(row);
+}
+
+// Startet den Timer, wenn man die Kachel berührt oder klickt
+function startLongPress(catalogId, itemName) {
+  // Verhindert mehrfache Timer
+  if (pressTimer) clearTimeout(pressTimer);
+
+  pressTimer = setTimeout(() => {
+    // Wenn nach 600ms nicht losgelassen wurde -> Bearbeiten öffnen!
+    editCatalogItem(catalogId, itemName);
+  }, 600); // 600 Millisekunden Halte-Dauer
+}
+
+// Bricht den Timer ab, wenn man zu früh loslässt oder wischt
+function cancelLongPress() {
+  if (pressTimer) {
+    clearTimeout(pressTimer);
+    pressTimer = null;
+  }
+}
+
+// Die eigentliche Bearbeiten-Funktion
+// 1. Öffnet das Modal beim Long-Press (ersetzt den alten prompt)
+function editCatalogItem(catalogId, oldName) {
+  cancelLongPress(); // Timer sicherheitshalber stoppen
+  activeEditingCatalogId = catalogId;
+
+  const inputEl = document.getElementById('catalog-edit-input');
+  const modal = document.getElementById('catalog-edit-modal');
+
+  if (inputEl && modal) {
+    inputEl.value = oldName;
+    modal.style.display = 'flex';
+    inputEl.focus();
+    inputEl.select();
+  }
+}
+
+// 2. Schließt das Modal
+function closeCatalogEditModal() {
+  const modal = document.getElementById('catalog-edit-modal');
+  if (modal) modal.style.display = 'none';
+  activeEditingCatalogId = null;
+}
+
+// 3. Änderungen speichern (Umbenennen)
+async function saveCatalogItemEdit() {
+  if (!activeEditingCatalogId) return;
+
+  const inputEl = document.getElementById('catalog-edit-input');
+  const newName = inputEl.value.trim();
+
+  if (!newName) {
+    alert('Der Name darf nicht leer sein.');
+    return;
+  }
+
+  // In Supabase aktualisieren
+  const { error } = await db
+    .from('ingredient_catalog')
+    .update({ name: newName })
+    .eq('id', activeEditingCatalogId);
+
+  if (error) {
+    console.error('Fehler beim Aktualisieren des Katalogs:', error);
+    alert('Fehler beim Speichern des neuen Namens.');
+    return;
+  }
+
+  // Lokalen Katalog aktualisieren & sortieren
+  const catItem = ingredientCatalog.find(c => c.id === activeEditingCatalogId);
+  if (catItem) {
+    catItem.name = newName;
+    ingredientCatalog.sort((a, b) => a.name.localeCompare(b.name));
+  }
+
+  closeCatalogEditModal();
+  
+  // Ansicht neu rendern
+  const queryInput = document.getElementById('shopping-live-filter');
+  renderShoppingView(queryInput ? queryInput.value : '');
+}
+
+// 4. Artikel komplett aus dem Katalog löschen
+async function deleteCatalogItem() {
+  if (!activeEditingCatalogId) return;
+
+  const catItem = ingredientCatalog.find(c => c.id === activeEditingCatalogId);
+  const itemName = catItem ? catItem.name : 'Diesen Artikel';
+
+  const confirmDelete = confirm(`Möchtest du "${itemName}" wirklich unwiderruflich aus dem Katalog löschen?`);
+  if (!confirmDelete) return;
+
+  // Aus Supabase löschen
+  const { error } = await db
+    .from('ingredient_catalog')
+    .delete()
+    .eq('id', activeEditingCatalogId);
+
+  if (error) {
+    console.error('Fehler beim Löschen des Artikels:', error);
+    alert('Fehler beim Löschen des Artikels.');
+    return;
+  }
+
+  // Aus dem lokalen Array entfernen
+  ingredientCatalog = ingredientCatalog.filter(c => c.id !== activeEditingCatalogId);
+
+  closeCatalogEditModal();
+
+  // Ansicht neu rendern
+  const queryInput = document.getElementById('shopping-live-filter');
+  renderShoppingView(queryInput ? queryInput.value : '');
+}
+
+// 2. Alle einfachen Zutaten aus den Inputs einsammeln
+function collectSimpleIngredientsFromForm() {
+  const fields = document.querySelectorAll('.simple-ingredient-input');
+  const ingredients = [];
+  
+  fields.forEach(field => {
+    const val = field.value.trim();
+    if (val) ingredients.push(val);
+  });
+  
+  return ingredients;
+}
+
+// 3. Beim Öffnen des Modals (zum Bearbeiten) die vorhandenen Zutaten laden
+function populateIngredientRows(ingredientsArray) {
+  const container = document.getElementById('ingredients-inputs-container');
+  if (!container) return;
+  
+  container.innerHTML = '';
+
+  if (ingredientsArray && ingredientsArray.length > 0) {
+    ingredientsArray.forEach(ing => {
+      addIngredientInputRow(ing);
+    });
+  } else {
+    addIngredientInputRow(); // Mindestens eine leere Zeile anzeigen
+  }
+} 
+
+    function toggleRecipeFields(show) {
+      document.getElementById('recipe-details-fields').style.display = show ? 'block' : 'none';
+    }
+
+
+
+    // Dynamic Step Row
+    function addStepInputRow(text = '') {
+      const container = document.getElementById('steps-inputs-container');
+      const stepNumber = container.children.length + 1;
+
+      const div = document.createElement('div');
+      div.className = 'step-row';
+      div.innerHTML = `
+        <span style="font-weight: 700; color: var(--text-muted); width: 20px;">${stepNumber}.</span>
+        <textarea placeholder="Beschreibe diesen Schritt..." class="step-text" style="flex:1;">${text}</textarea>
+        <button type="button" class="btn btn-danger" style="padding: 6px 10px;" onclick="removeStepRow(this)">✕</button>
+      `;
+      container.appendChild(div);
+    }
+
+    function removeStepRow(btn) {
+      btn.parentElement.remove();
+      const container = document.getElementById('steps-inputs-container');
+      Array.from(container.children).forEach((row, idx) => {
+        row.querySelector('span').innerText = `${idx + 1}.`;
+      });
+    }
+
+    async function openNewDishModal() {
+  // Wichtig: Erst den Katalog frisch aus Supabase laden, damit alle Zutaten da sind!
+  await fetchIngredientCatalog();
+
+  // Aktuelle Zutaten für dieses neue Gericht zurücksetzen
+  currentDishIngredients = [];
+  renderSelectedIngredientsChips();
+
+  // Felder zurücksetzen
+  const idField = document.getElementById('recipe-edit-id');
+  if (idField) idField.value = '';
+
+  const nameField = document.getElementById('recipe-name');
+  if (nameField) nameField.value = '';
+
+  // Titel anpassen
+  const titleEl = document.getElementById('modal-recipe-form-title');
+  if (titleEl) titleEl.innerText = '➕ Neues Gericht hinzufügen';
+
+  // Kategorien-Dropdown füllen (falls die Funktion existiert)
+  if (typeof populateCategoryDropdown === 'function') {
+    populateCategoryDropdown();
+  }
+
+  // Eingabefeld für Suche leeren
+  const searchInput = document.getElementById('ingredient-search-input');
+  if (searchInput) searchInput.value = '';
+
+  // Modal anzeigen
+  if (typeof openModal === 'function') {
+    openModal('modal-add-recipe');
+  }
+}
+
+    function openEditDishModalById(recipeId) {
+      const recipe = recipesState.find(r => r.id === recipeId);
+      if (recipe) openEditRecipeModal(recipe);
+    }
+
+    async function openEditRecipeModal(dishId) {
+  // Auch hier: Erst den Katalog frisch aus Supabase laden
+  await fetchIngredientCatalog();
+
+  // Gericht im recipesState finden
+  const dish = recipesState.find(r => r.id === dishId);
+  if (!dish) return;
+
+  // ID und Name setzen
+  document.getElementById('recipe-edit-id').value = dish.id;
+  document.getElementById('recipe-name').value = dish.name;
+  
+  // Titel anpassen
+  const titleEl = document.getElementById('modal-recipe-form-title');
+  if (titleEl) titleEl.innerText = '✏️ Gericht bearbeiten';
+
+  // Kategorie setzen
+  if (typeof populateCategoryDropdown === 'function') {
+    populateCategoryDropdown(dish.category);
+  }
+
+  // Bereits vorhandene Zutaten des Gerichts laden
+  currentDishIngredients = [...(dish.ingredients || [])];
+  renderSelectedIngredientsChips();
+
+  // Eingabefeld für Suche leeren
+  const searchInput = document.getElementById('ingredient-search-input');
+  if (searchInput) searchInput.value = '';
+
+  // Modal anzeigen
+  if (typeof openModal === 'function') {
+    openModal('modal-add-recipe');
+  }
+}
+
+    async function saveRecipeForm(event) {
+  // Verhindert das Neuladen, falls ein Event übergeben wurde
+  if (event && typeof event.preventDefault === 'function') {
+    event.preventDefault();
+  }
+
+  // Werte aus den Feldern auslesen
+  const idField = document.getElementById('recipe-edit-id');
+  const nameField = document.getElementById('recipe-name');
+  const categoryField = document.getElementById('recipe-cat');
+  const trackStatusField = document.getElementById('recipe-track-status'); // NEU
+
+  const editId = idField ? idField.value.trim() : '';
+  const name = nameField ? nameField.value.trim() : '';
+  const category = categoryField ? categoryField.value : '';
+  const trackStatus = trackStatusField ? trackStatusField.checked : false; // NEU
+
+  if (!name) {
+    alert('Bitte gib einen Namen für das Gericht ein.');
+    return;
+  }
+
+  let error = null;
+
+  if (editId) {
+    // --- BESTEHENDES GERICHT AKTUALISIEREN ---
+    const recipeData = {
+      name: name,
+      category: category,
+      ingredients: currentDishIngredients,
+      track_status: trackStatus // NEU
+    };
+
+    const { error: updateError } = await db
+      .from('recipes')
+      .update(recipeData)
+      .eq('id', editId);
+    
+    error = updateError;
+  } else {
+    // --- NEUES GERICHT EINFÜGEN ---
+    const recipeData = {
+      name: name,
+      category: category,
+      ingredients: currentDishIngredients,
+      has_recipe: false,
+      track_status: trackStatus // NEU
+    };
+
+    const { error: insertError } = await db
+      .from('recipes')
+      .insert([recipeData]);
+    
+    error = insertError;
+  }
+
+  if (error) {
+    console.error('Fehler beim Speichern des Gerichts:', error);
+    alert('Fehler beim Speichern in der Datenbank: ' + error.message);
+    return;
+  }
+
+  // Modal schließen
+  if (typeof closeModal === 'function') {
+    closeModal('modal-add-recipe');
+  }
+
+  // Liste im Frontend aktualisieren
+  if (typeof fetchRecipes === 'function') {
+    fetchRecipes();
+  } else {
+    location.reload();
+  }
+}
+
+    function openRecipeDetails(recipeId) {
+      const recipe = recipesState.find(r => r.id === recipeId);
+      if (!recipe) return;
+
+      currentActiveRecipe = recipe;
+      currentTargetServings = recipe.servings || 4;
+      currentStepIndex = 0;
+
+      document.getElementById('view-recipe-title').innerText = recipe.name;
+      document.getElementById('view-recipe-cat').innerText = recipe.category || '📌 Sonstiges';
+
+      renderViewIngredients();
+      renderStepView();
+
+      document.getElementById('btn-delete-current-recipe').onclick = function() {
+        deleteRecipe(recipeId);
+      };
+
+      document.getElementById('btn-edit-current-recipe').onclick = function() {
+        openEditRecipeModal(recipe);
+      };
+
+      openModal('modal-view-recipe');
+    }
+
+    function adjustViewServings(delta) {
+      if (!currentActiveRecipe) return;
+      const newServings = currentTargetServings + delta;
+      if (newServings >= 1) {
+        currentTargetServings = newServings;
+        renderViewIngredients();
+      }
+    }
+
+    function renderViewIngredients() {
+      if (!currentActiveRecipe) return;
+      document.getElementById('view-recipe-servings-count').innerText = currentTargetServings;
+
+      const list = document.getElementById('view-recipe-ingredients-list');
+      const baseServings = currentActiveRecipe.servings || 4;
+      let ingredientsArray = currentActiveRecipe.ingredients;
+
+      if (typeof ingredientsArray === 'string') {
+        try { ingredientsArray = JSON.parse(ingredientsArray); } catch (e) { ingredientsArray = null; }
+      }
+
+      if (!ingredientsArray || !Array.isArray(ingredientsArray) || ingredientsArray.length === 0) {
+        list.innerHTML = '<li style="padding: 6px 0; color: var(--text-muted);">Keine Zutaten hinterlegt.</li>';
+        return;
+      }
+
+      const factor = currentTargetServings / baseServings;
+
+      list.innerHTML = ingredientsArray.map(item => {
+        let displayAmount = '';
+        if (item.amount !== null && item.amount !== undefined) {
+          const scaled = item.amount * factor;
+          displayAmount = Math.round(scaled * 100) / 100;
+        }
+
+        return `
+          <li class="ingredient-view-item">
+            <span style="font-weight: 600;">${item.name}</span>
+            <span style="color: var(--primary); font-weight: 700;">${displayAmount} ${item.unit || ''}</span>
+          </li>
+        `;
+      }).join('');
+    }
+
+    // STEPPER LOGIK
+    function getStepsArray() {
+      if (!currentActiveRecipe) return [];
+      let steps = currentActiveRecipe.instructions_steps;
+
+      if (!steps || (Array.isArray(steps) && steps.length === 0)) {
+        if (currentActiveRecipe.instructions) {
+          return currentActiveRecipe.instructions.split('\n').filter(s => s.trim() !== '');
+        }
+        return [];
+      }
+
+      if (typeof steps === 'string') {
+        try { steps = JSON.parse(steps); } catch (e) { steps = []; }
+      }
+
+      return steps;
+    }
+
+    function renderStepView() {
+      const steps = getStepsArray();
+      const stepperContainer = document.getElementById('stepper-container');
+
+      if (steps.length === 0) {
+        stepperContainer.innerHTML = '<p style="color: var(--text-muted);">Keine Zubereitungsschritte vorhanden.</p>';
+        return;
+      }
+
+      const totalSteps = steps.length;
+      if (currentStepIndex >= totalSteps) currentStepIndex = totalSteps - 1;
+      if (currentStepIndex < 0) currentStepIndex = 0;
+
+      const progressPercent = ((currentStepIndex + 1) / totalSteps) * 100;
+      document.getElementById('step-progress-fill').style.width = `${progressPercent}%`;
+
+      document.getElementById('step-counter-title').innerText = `Schritt ${currentStepIndex + 1} von ${totalSteps}`;
+      document.getElementById('step-text-content').innerText = steps[currentStepIndex];
+
+      const btnPrev = document.getElementById('btn-prev-step');
+      const btnNext = document.getElementById('btn-next-step');
+
+      btnPrev.disabled = (currentStepIndex === 0);
+      btnPrev.style.opacity = (currentStepIndex === 0) ? '0.5' : '1';
+
+      if (currentStepIndex === totalSteps - 1) {
+        btnNext.innerText = 'Fertig! 🎉';
+        btnNext.className = 'btn btn-accent';
+      } else {
+        btnNext.innerText = 'Weiter ▶';
+        btnNext.className = 'btn btn-primary';
+      }
+    }
+
+    function navigateStep(direction) {
+      const steps = getStepsArray();
+      const newIndex = currentStepIndex + direction;
+
+      if (newIndex >= 0 && newIndex < steps.length) {
+        currentStepIndex = newIndex;
+        renderStepView();
+      }
+    }
+
+    async function deleteRecipe(id) {
+      if (confirm('Möchtest du dieses Gericht wirklich löschen?')) {
+        await db.from('recipes').delete().eq('id', id);
+        closeModal('modal-view-recipe');
+        fetchRecipes();
+      }
+    }
+
+    // --- WOCHENPLÄNE ---
+    async function fetchWochenplaene() {
+  const { data, error } = await db
+    .from('meal_plans')
+    .select('*')
+    .order('created_at', { ascending: false });
+
+  if (error) { 
+    console.error(error); 
+    return; 
+  }
+
+  // WICHTIG: Die geladenen Daten im globalen State speichern!
+  allPlansState = data || []; 
+
+  renderWochenplaene(data);
+}
+
+    function renderWochenplaene(plansData) {
+      const list = document.getElementById('wochenplaene-list');
+      if (!plansData || plansData.length === 0) {
+        list.innerHTML = '<p style="color: var(--text-muted);">Noch keine gespeicherten Wochenpläne vorhanden.</p>';
+        return;
+      }
+
+      list.innerHTML = plansData.map(item => `
+        <div class="card">
+          <div class="actions-bar">
+            <strong>${item.week_name}</strong>
+            <button class="btn btn-danger" style="padding:2px 8px; font-size:0.75rem;" onclick="deleteWochenplan('${item.id}')">Löschen</button>
+          </div>
+          <div class="compact-week-list">
+            ${days.map(d => `
+              <div class="compact-day-row">
+                <span class="compact-day-name">${d}:</span>
+                <span class="compact-day-meal ${!item.meals[d] ? 'empty' : ''}">${item.meals[d] || '-'}</span>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      `).join('');
+    }
+
+    async function deleteWochenplan(id) {
+      if (confirm('Möchtest du diesen Wochenplan löschen?')) {
+        await db.from('meal_plans').delete().eq('id', id);
+        fetchWochenplaene();
+      }
+    }
+
+// ==========================================
+// EINKAUFSLISTE (SUPABASE INTEGRATION)
+// ==========================================
+
+// Zentrale Liste für alle Einkaufsartikel
+let shoppingList = [];
+
+// 1. Tab-Wechsel steuern & Daten bei Bedarf laden
+function switchMainTab(tabId) {
+  // Alle Tabs verstecken
+  document.querySelectorAll('.tab-content').forEach(tab => {
+    tab.classList.remove('active');
+    tab.style.display = 'none';
+  });
+
+  // Buttons zurücksetzen
+  document.querySelectorAll('.main-nav button').forEach(btn => btn.classList.remove('active'));
+
+  // Gewählten Tab anzeigen
+  const activeTab = document.getElementById(tabId);
+  if (activeTab) {
+    activeTab.classList.add('active');
+    // Für die Einkaufsliste brauchen wir 'flex', für alle anderen 'block'
+    activeTab.style.display = (tabId === 'shopping') ? 'flex' : 'block';
+  }
+
+  // Active-Klasse auf Button setzen
+  const activeBtn = document.getElementById(`btn-main-${tabId}`);
+  if (activeBtn) activeBtn.classList.add('active');
+}
+
+
+// 2. Einkaufsliste aus Supabase laden
+async function fetchShoppingList() {
+  const { data, error } = await db
+    .from('shopping_list')
+    .select('*')
+    .order('created_at', { ascending: true });
+
+  if (error) {
+    console.error('Fehler beim Laden der Einkaufsliste:', error);
+    return;
+  }
+
+  // Mappen auf unser internes Format
+  currentShoppingList = (data || []).map(row => ({
+    id: row.id,
+    name: row.text || '',
+    note: '', // Falls du Notizen trennen willst, oder wir packen alles in 'text'
+    checked: row.done || false
+  }));
+  
+  if (typeof renderShoppingView === 'function') {
+    renderShoppingView(document.getElementById('shopping-live-filter')?.value || '');
+  }
+}
+
+// 1. Einkaufsliste und den Katalog rendern
+function renderShoppingView(filterQuery = '') {
+  const activeContainer = document.getElementById('active-shopping-list');
+  const catalogContainer = document.getElementById('catalog-items-container');
+  const addBtn = document.getElementById('btn-add-new-item');
+
+  // --- A) Aktuelle Einkaufsliste anzeigen ---
+  if (!currentShoppingList || currentShoppingList.length === 0) {
+    activeContainer.innerHTML = `
+      <div style="text-align: center; color: var(--text-muted); padding: 12px 0; font-size: 0.85rem;">
+        ✨ Alles erledigt! Deine Einkaufsliste ist leer.
+      </div>
+    `;
+  } else {
+    activeContainer.innerHTML = currentShoppingList.map((item, index) => `
+      <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 10px; border-bottom: 1px solid var(--border);">
+        <div style="display: flex; align-items: baseline; gap: 8px; flex: 1; text-decoration: ${item.checked ? 'line-through' : 'none'}; color: ${item.checked ? 'var(--text-muted)' : 'var(--text)'};">
+          <span style="font-size: 0.9rem; font-weight: 600;">${item.name}</span>
+          <span style="font-size: 0.75rem; background: var(--bg-secondary, #f1f5f9); padding: 2px 6px; border-radius: 4px; color: var(--text-muted); border: 1px solid var(--border); cursor: pointer;" title="Klicken, um Notiz zu ändern" onclick="editShoppingItemNote(${index})">
+            ${item.note ? item.note : '+ Notiz'}
+          </span>
+        </div>
+        <div style="display: flex; gap: 6px;">
+          <button class="btn btn-secondary" style="padding: 2px 6px; font-size: 0.75rem;" onclick="toggleCheckShoppingItem(${index})">✔</button>
+          <button class="btn btn-secondary" style="padding: 2px 6px; font-size: 0.75rem; color: var(--danger, #ef4444);" onclick="removeShoppingItem(${index})">✕</button>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  // --- B) Datenbank-Katalog verarbeiten & sortieren ---
+  const query = filterQuery.trim().toLowerCase();
+  
+  // Namen aller Artikel, die gerade aktiv auf der Einkaufsliste stehen
+  const activeItemNames = currentShoppingList
+    .filter(item => !item.checked)
+    .map(item => item.name.toLowerCase());
+
+  // 1. Erst nach Suchbegriff filtern
+  let filteredCatalog = ingredientCatalog.filter(catItem => 
+    catItem.name && catItem.name.toLowerCase().includes(query)
+  );
+
+  // 2. Katalog sortieren: Artikel, die NICHT auf der Liste sind, kommen nach vorn. 
+  // Bereits ausgewählte Artikel wandern ans Ende.
+  filteredCatalog.sort((a, b) => {
+    const aActive = activeItemNames.includes(a.name.toLowerCase());
+    const bActive = activeItemNames.includes(b.name.toLowerCase());
+    
+    if (aActive === bActive) return a.name.localeCompare(b.name);
+    return aActive ? 1 : -1; // Aktive wandern nach hinten (1), andere nach vorn (-1)
+  });
+
+  if (filteredCatalog.length === 0 && query.length > 0) {
+    catalogContainer.style.display = 'block';
+    catalogContainer.innerHTML = `
+      <div style="text-align: center; color: var(--text-muted); padding: 24px 0; font-size: 0.85rem;">
+        Kein passender Artikel gefunden.<br>Klicke rechts auf <strong>+ Neu</strong>, um "${query}" in die Datenbank aufzunehmen!
+      </div>
+    `;
+    if (addBtn) addBtn.style.display = 'block';
+  } else {
+    catalogContainer.style.display = 'grid';
+    if (addBtn) addBtn.style.display = 'none';
+    
+    catalogContainer.innerHTML = filteredCatalog.map(catItem => {
+      const isOnList = activeItemNames.includes(catItem.name.toLowerCase());
+      
+      // Styling je nachdem, ob er schon auf der Liste ist oder nicht
+      const bgColor = isOnList ? 'var(--bg-main, #f1f5f9)' : 'var(--bg-secondary, #f8fafc)';
+      const textColor = isOnList ? 'var(--text-muted)' : 'var(--text)';
+      const opacity = isOnList ? '0.5' : '1';
+      const actionText = isOnList ? 'Bereits auf Liste' : '+ Hinzufügen';
+      const actionColor = isOnList ? 'var(--text-muted)' : 'var(--primary)';
+      const cursorStyle = isOnList ? 'default' : 'pointer';
+      
+      const clickAction = isOnList ? '' : `onclick="cancelLongPress(); addCatalogItemToShoppingList('${catItem.name.replace(/'/g, "\\'")}')"`;
+
+      return `
+        <div style="
+          background: ${bgColor}; 
+          border: 1px solid var(--border); 
+          border-radius: 12px; 
+          padding: 12px 8px; 
+          min-height: 75px; 
+          display: flex; 
+          flex-direction: column; 
+          justify-content: center; 
+          align-items: center; 
+          text-align: center; 
+          cursor: ${cursorStyle}; 
+          opacity: ${opacity};
+          user-select: none;
+          -webkit-user-select: none;
+          transition: transform 0.1s ease, background 0.1s ease;
+          box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+        " 
+        onmousedown="startLongPress('${catItem.id}', '${catItem.name.replace(/'/g, "\\'")}')"
+        onmouseup="cancelLongPress()"
+        onmouseleave="cancelLongPress()"
+        ontouchstart="startLongPress('${catItem.id}', '${catItem.name.replace(/'/g, "\\'")}')"
+        ontouchend="cancelLongPress()"
+        ontouchcancel="cancelLongPress()"
+        ${isOnList ? '' : `onmouseover="this.style.background='var(--primary-light, #e2e8f0)';" onmouseout="this.style.background='var(--bg-secondary, #f8fafc)';"`}
+        ${clickAction}>
+          <span style="font-size: 0.85rem; font-weight: 600; color: ${textColor}; line-height: 1.2;">${catItem.name}</span>
+          <span style="font-size: 0.7rem; color: ${actionColor}; margin-top: 4px; font-weight: 500;">${actionText}</span>
+        </div>
+      `;
+    }).join('');
+  }
+}
+
+// 2. Live-Filter ausführen, wenn man in das fixierte Feld tippt
+function filterShoppingCatalog(value) {
+  renderShoppingView(value);
+}
+
+// 3. Artikel aus dem Katalog zur Einkaufsliste hinzufügen
+async function addCatalogItemToShoppingList(itemName) {
+  const existing = currentShoppingList.find(i => i.name.toLowerCase() === itemName.toLowerCase());
+  if (existing) return; // Schon da
+
+  const payload = { text: itemName, done: false };
+
+  const { data, error } = await db
+    .from('shopping_list')
+    .insert([payload])
+    .select();
+
+  if (!error && data && data.length > 0) {
+    currentShoppingList.push({
+      id: data[0].id,
+      name: data[0].text,
+      note: '',
+      checked: data[0].done
+    });
+  }
+
+  document.getElementById('shopping-live-filter').value = '';
+  renderShoppingView('');
+}
+
+// 3. Über das Suchfeld direkt mit Komma hinzufügen (z.B. "Paprika, rot")
+async function addNewItemFromFilter() {
+  const inputEl = document.getElementById('shopping-live-filter');
+  let val = inputEl.value.trim();
+  if (!val) return;
+
+  // Prüfen ob Artikel im Katalog ist, ggf. dort aufnehmen
+  const existsInCatalog = ingredientCatalog.find(c => c.name.toLowerCase() === val.toLowerCase());
+  if (!existsInCatalog) {
+    const { data: catData } = await db
+      .from('ingredient_catalog')
+      .insert([{ name: val }])
+      .select();
+
+    if (catData && catData.length > 0) {
+      ingredientCatalog.push(catData[0]);
+      ingredientCatalog.sort((a, b) => a.name.localeCompare(b.name));
+    }
+  }
+
+  const payload = { text: val, done: false };
+
+  const { data, error } = await db
+    .from('shopping_list')
+    .insert([payload])
+    .select();
+
+  if (!error && data && data.length > 0) {
+    currentShoppingList.push({
+      id: data[0].id,
+      name: data[0].text,
+      note: '',
+      checked: data[0].done
+    });
+  }
+
+  inputEl.value = '';
+  renderShoppingView('');
+}
+
+// 5. Abhaken / Löschen in der aktiven Einkaufsliste
+async function toggleCheckShoppingItem(index) {
+  const item = currentShoppingList[index];
+  item.checked = !item.checked;
+
+  if (item.id) {
+    await db
+      .from('shopping_list')
+      .update({ done: item.checked })
+      .eq('id', item.id);
+  }
+
+  // Korrekt: Wir holen den String-Wert aus dem Input-Feld oder übergeben einen leeren String
+  const queryInput = document.getElementById('shopping-live-filter');
+  renderShoppingView(queryInput ? queryInput.value : '');
+}
+
+async function removeShoppingItem(index) {
+  const item = currentShoppingList[index];
+
+  if (item.id) {
+    await db
+      .from('shopping_list')
+      .delete()
+      .eq('id', item.id);
+  }
+
+  currentShoppingList.splice(index, 1);
+  renderShoppingView(document.getElementById('shopping-live-filter')?.value || '');
+}
+
+async function fetchIngredientCatalog() {
+  const { data, error } = await db
+    .from('ingredient_catalog')
+    .select('*')
+    .order('name', { ascending: true });
+
+  if (error) {
+    console.error('Fehler beim Laden des Zutaten-Katalogs:', error);
+    return;
+  }
+  ingredientCatalog = data || [];
+}
+
+function handleIngredientInput(query) {
+  const dropdown = document.getElementById('ingredient-suggestions-dropdown');
+  if (!dropdown) return;
+
+  const trimmedQuery = query.trim().toLowerCase();
+
+  if (!trimmedQuery) {
+    dropdown.style.display = 'none';
+    dropdown.innerHTML = '';
+    return;
+  }
+
+  // Passende Zutaten aus dem Katalog filtern
+  const matches = ingredientCatalog.filter(item => 
+    item.name.toLowerCase().includes(trimmedQuery)
+  );
+
+  dropdown.innerHTML = '';
+
+  if (matches.length > 0) {
+    matches.forEach(match => {
+      const div = document.createElement('div');
+      div.style.cssText = 'padding: 8px 12px; cursor: pointer; border-bottom: 1px solid var(--border);';
+      div.innerText = match.name;
+      div.onmousedown = () => selectIngredient(match.name); // Klick übernimmt die Zutat
+      dropdown.appendChild(div);
+    });
+  } else {
+    // Wenn es noch keine Übereinstimmung gibt -> Option zum Hinzufügen anbieten
+    const div = document.createElement('div');
+    div.style.cssText = 'padding: 8px 12px; cursor: pointer; color: var(--primary); font-weight: 600;';
+    div.innerText = `➕ "${query.trim()}" neu anlegen & hinzufügen`;
+    div.onmousedown = () => addNewAndSelectIngredient(query.trim());
+    dropdown.appendChild(div);
+  }
+
+  dropdown.style.display = 'block';
+}
+
+function selectIngredient(name) {
+  // Prüfen, ob sie beim Gericht schon dabei ist
+  if (!currentDishIngredients.includes(name)) {
+    currentDishIngredients.push(name);
+    renderSelectedIngredientsChips();
+  }
+
+  // Eingabefeld leeren und Dropdown schließen
+  const input = document.getElementById('ingredient-search-input');
+  if (input) input.value = '';
+  
+  const dropdown = document.getElementById('ingredient-suggestions-dropdown');
+  if (dropdown) dropdown.style.display = 'none';
+}
+
+// 4. Neue Zutat in Supabase-Katalog eintragen und direkt auswählen
+async function addNewAndSelectIngredient(name) {
+  if (!name) return;
+
+  // In Supabase speichern (ignoriert Fehler falls sie durch Race-Conditions schon existiert)
+  const { data, error } = await db
+    .from('ingredient_catalog')
+    .insert([{ name: name }])
+    .select();
+
+  if (!error && data && data.length > 0) {
+    ingredientCatalog.push(data[0]);
+    // Alphabetisch sortieren
+    ingredientCatalog.sort((a, b) => a.name.localeCompare(b.name));
+  } else {
+    // Falls sie evtl. schon existiert, holen wir sie uns kurz aus dem Katalog oder erlauben sie direkt
+    console.warn('Hinweis beim Anlegen der Zutat:', error);
+  }
+
+  selectIngredient(name);
+}
+
+// 5. Über den "Hinzufügen"-Button direkt tippen & enter/klick
+function addTypedIngredient() {
+  const input = document.getElementById('ingredient-search-input');
+  if (!input) return;
+  const val = input.value.trim();
+  if (!val) return;
+
+  // Schauen ob sie exakt im Katalog ist, sonst neu anlegen
+  const found = ingredientCatalog.find(item => item.name.toLowerCase() === val.toLowerCase());
+  if (found) {
+    selectIngredient(found.name);
+  } else {
+    addNewAndSelectIngredient(val);
+  }
+}
+
+// 6. Ausgewählte Zutaten als schöne "Chips" (Badges) unter dem Input anzeigen
+function renderSelectedIngredientsChips() {
+  const container = document.getElementById('selected-ingredients-chips');
+  if (!container) return;
+
+  container.innerHTML = '';
+
+  currentDishIngredients.forEach((ing, index) => {
+    const chip = document.createElement('div');
+    chip.style.cssText = `
+      display: inline-flex; 
+      align-items: center; 
+      gap: 6px; 
+      background: var(--bg-secondary, #f1f5f9); 
+      padding: 4px 10px; 
+      border-radius: 16px; 
+      font-size: 0.85rem;
+      border: 1px solid var(--border);
+    `;
+    chip.innerHTML = `
+      <span>${ing}</span>
+      <button type="button" style="background: none; border: none; cursor: pointer; font-size: 0.8rem; color: var(--text-muted);" onclick="removeDishIngredient(${index})">✕</button>
+    `;
+    container.appendChild(chip);
+  });
+}
+
+// 7. Zutat aus der Liste des Gerichts wieder entfernen
+function removeDishIngredient(index) {
+  currentDishIngredients.splice(index, 1);
+  renderSelectedIngredientsChips();
+}
+
+// 3. Zutaten im Rezept-Modal abhaktbar darstellen
+function renderIngredientsInModal(ingredientsArray) {
+  const listContainer = document.getElementById('view-recipe-ingredients-list');
+  if (!listContainer) return;
+  
+  listContainer.innerHTML = '';
+
+  if (!ingredientsArray || ingredientsArray.length === 0) {
+    listContainer.innerHTML = '<li style="color: var(--text-muted);">Keine Zutaten angegeben</li>';
+    return;
+  }
+
+  ingredientsArray.forEach((ing, index) => {
+    const li = document.createElement('li');
+    li.style.cssText = 'display: flex; align-items: center; gap: 10px; margin-bottom: 6px; cursor: pointer;';
+    
+    // Ungehakt = fehlt im Haushalt, muss auf die Einkaufsliste
+    li.innerHTML = `
+      <input type="checkbox" id="recipe-ing-${index}" class="recipe-ingredient-cb" data-ingredient="${ing}">
+      <label for="recipe-ing-${index}" style="cursor: pointer;">${ing}</label>
+    `;
+    
+    listContainer.appendChild(li);
+  });
+}
+
+// 4. Ungehakte Zutaten aus dem Rezept-Modal in Supabase speichern
+async function addMissingIngredientsToShoppingList() {
+  const checkboxes = document.querySelectorAll('.recipe-ingredient-cb');
+  const itemsToInsert = [];
+
+  checkboxes.forEach(cb => {
+    // Nur Zutaten übernehmen, die NICHT abgehakt sind (also fehlen)
+    if (!cb.checked) {
+      const ingredientName = cb.getAttribute('data-ingredient');
+      
+      // Duplikate (offene Einträge mit gleichem Namen) vermeiden
+      const exists = shoppingList.some(
+        item => item.text.toLowerCase() === ingredientName.toLowerCase() && !item.done
+      );
+      
+      if (!exists) {
+        itemsToInsert.push({
+          text: ingredientName,
+          done: false
+        });
+      }
+    }
+  });
+
+  if (itemsToInsert.length > 0) {
+    const { data, error } = await db
+      .from('shopping_list')
+      .insert(itemsToInsert)
+      .select();
+
+    if (error) {
+      console.error('Fehler beim Hinzufügen zur Einkaufsliste:', error);
+      alert('Fehler beim Speichern der Einkaufsliste.');
+    } else {
+      shoppingList.push(...data);
+      alert(`🛒 ${itemsToInsert.length} Zutat(en) wurden auf die Einkaufsliste gesetzt!`);
+      renderShoppingList();
+    }
+  } else {
+    alert('Alle Zutaten sind bereits abgehakt oder stehen schon auf deiner Einkaufsliste.');
+  }
+
+  if (typeof closeModal === 'function') {
+    closeModal('modal-view-recipe');
+  }
+}
+
+// 5. Freie/manuelle Zutat zur Einkaufsliste in Supabase hinzufügen
+async function addCustomShoppingItem() {
+  const input = document.getElementById('custom-shopping-input');
+  if (!input) return;
+
+  const text = input.value.trim();
+  if (!text) return;
+
+  const { data, error } = await db
+    .from('shopping_list')
+    .insert([{ text: text, done: false }])
+    .select();
+
+  if (error) {
+    console.error('Fehler beim Hinzufügen des Artikels:', error);
+    alert('Fehler beim Hinzufügen des Artikels.');
+    return;
+  }
+
+  if (data && data.length > 0) {
+    shoppingList.push(data[0]);
+  }
+  
+  input.value = '';
+  renderShoppingList();
+}
+
+// 6. Status (erledigt / offen) in Supabase aktualisieren
+async function toggleShoppingItem(id) {
+  const item = shoppingList.find(i => i.id === id);
+  if (!item) return;
+
+  const newDoneState = !item.done;
+
+  const { error } = await db
+    .from('shopping_list')
+    .update({ done: newDoneState })
+    .eq('id', id);
+
+  if (error) {
+    console.error('Fehler beim Aktualisieren:', error);
+    return;
+  }
+
+  item.done = newDoneState;
+  renderShoppingList();
+}
+
+// 7. Alle erledigten Artikel aus Supabase löschen
+async function clearCheckedShoppingItems() {
+  const checkedItems = currentShoppingList.filter(i => i.checked);
+  if (checkedItems.length === 0) return;
+
+  const checkedIds = checkedItems.filter(i => i.id).map(i => i.id);
+
+  if (checkedIds.length > 0) {
+    await db
+      .from('shopping_list')
+      .delete()
+      .in('id', checkedIds);
+  }
+
+  currentShoppingList = currentShoppingList.filter(i => !i.checked);
+  renderShoppingView('');
+}
+
+// 8. Einkaufsliste im HTML darstellen
+function renderShoppingList() {
+  const container = document.getElementById('shopping-list');
+  if (!container) return;
+
+  container.innerHTML = '';
+
+  if (shoppingList.length === 0) {
+    container.innerHTML = '<li class="loading">Deine Einkaufsliste ist leer!</li>';
+    return;
+  }
+
+  shoppingList.forEach(item => {
+    const li = document.createElement('li');
+    li.style.cssText = `
+      display: flex; 
+      align-items: center; 
+      gap: 10px; 
+      padding: 8px 12px; 
+      border-bottom: 1px solid var(--border);
+      ${item.done ? 'text-decoration: line-through; opacity: 0.6;' : ''}
+    `;
+
+    li.innerHTML = `
+      <input type="checkbox" ${item.done ? 'checked' : ''} onchange="toggleShoppingItem('${item.id}')">
+      <span style="flex: 1;">${item.text}</span>
+    `;
+
+    container.appendChild(li);
+  });
+}
+
+document.addEventListener('DOMContentLoaded', async () => {
+  // 1. Zuerst die Datenbasis aus der Datenbank laden
+  if (typeof fetchWochenplaene === 'function') await fetchWochenplaene();
+  if (typeof fetchRecipes === 'function') await fetchRecipes();
+  if (typeof fetchIngredientCatalog === 'function') await fetchIngredientCatalog();
+  if (typeof fetchShoppingList === 'function') await fetchShoppingList();
+
+  // 2. Erst wenn alle Daten geladen sind, die Ansicht aufbauen
+  if (typeof changeSelectedWeek === 'function') {
+    changeSelectedWeek(0);
+  }
+});
+
+// Funktion zum einfügen der zutaten eins gerichtes in die einkaufliste
+// 1. Öffnet das Modal und lädt die Zutaten des angeklickten Rezepts
+async function openRecipeIngredients(recipeName) {
+  const modal = document.getElementById('recipe-modal');
+  const titleEl = document.getElementById('recipe-modal-title');
+  const listEl = document.getElementById('recipe-ingredients-list');
+
+  titleEl.innerText = `Zutaten für: ${recipeName}`;
+  listEl.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 20px;">Lade Zutaten...</div>';
+  modal.style.display = 'flex';
+
+  // 1. Gerichtsnamen am Komma aufteilen (z.B. "Fischstäbchen, Kartoffelbrei" -> ["Fischstäbchen", "Kartoffelbrei"])
+  // Wir trennen sowohl an Kommas als auch an " und "
+  const rawParts = recipeName.split(/,|\s+und\s+/i);
+  const searchNames = rawParts.map(p => p.trim()).filter(p => p.length > 0);
+
+  if (searchNames.length === 0) {
+    listEl.innerHTML = `<div style="text-align: center; color: var(--text-muted); padding: 20px;">Keine gültigen Gerichte erkannt.</div>`;
+    currentRecipeIngredients = [];
+    return;
+  }
+
+  // 2. Alle passenden Rezepte auf einmal aus Supabase abrufen (.in statt .single)
+  const { data, error } = await db
+    .from('recipes')
+    .select('*')
+    .in('name', searchNames); // Sucht nach allen Namen aus unserem Array!
+
+  if (error || !data || data.length === 0) {
+    // Fallback: Versuchen wir es mit einer flexibleren Suche über .or(), falls die Groß-/Kleinschreibung abweicht
+    // Oder direkt die Meldung anzeigen:
+    listEl.innerHTML = `<div style="text-align: center; color: var(--text-muted); padding: 20px;">Keine Rezeptdetails für "${recipeName}" in der Datenbank gefunden.</div>`;
+    currentRecipeIngredients = [];
+    return;
+  }
+
+  // 3. Alle Zutaten aus allen gefundenen Rezepten einsammeln und zusammenführen
+  let allCombinedIngredients = [];
+
+  data.forEach(recipe => {
+    let ing = recipe.ingredients || [];
+    if (typeof ing === 'string') {
+      ing = ing.split(',').map(i => ({ name: i.trim() }));
+    }
+    // Zutaten anfügen
+    ing.forEach(item => {
+      const name = typeof item === 'string' ? item : item.name;
+      if (name) allCombinedIngredients.push({ name: name.trim(), atHome: false });
+    });
+  });
+
+  // Doppelte Zutaten (falls z.B. in beiden Gerichten Salz steht) optional zusammenlegen oder einfach auflisten
+  currentRecipeIngredients = allCombinedIngredients;
+
+  renderRecipeIngredientsModal();
+}
+
+// 2. Rendert die Zutaten im Modal mit Checkboxen
+function renderRecipeIngredientsModal() {
+  const listEl = document.getElementById('recipe-ingredients-list');
+
+  if (currentRecipeIngredients.length === 0) {
+    listEl.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 20px;">Dieses Rezept hat keine hinterlegten Zutaten.</div>';
+    return;
+  }
+
+  listEl.innerHTML = currentRecipeIngredients.map((ing, index) => `
+    <label style="display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; background: var(--bg-secondary, #f8fafc); border: 1px solid var(--border); border-radius: 10px; cursor: pointer;">
+      <span style="font-size: 0.9rem; font-weight: 500; color: ${ing.atHome ? 'var(--text-muted)' : 'var(--text)'}; text-decoration: ${ing.atHome ? 'line-through' : 'none'};">
+        ${ing.name}
+      </span>
+      <input type="checkbox" ${ing.atHome ? 'checked' : ''} onchange="toggleRecipeIngredientAtHome(${index})" style="width: 18px; height: 18px; cursor: pointer;">
+    </label>
+  `).join('');
+}
+
+// 3. Status umschalten (Haken = habe ich zuhause)
+function toggleRecipeIngredientAtHome(index) {
+  currentRecipeIngredients[index].atHome = !currentRecipeIngredients[index].atHome;
+  renderRecipeIngredientsModal();
+}
+
+// 4. Modal schließen
+function closeRecipeModal() {
+  document.getElementById('recipe-modal').style.display = 'none';
+}
+
+// 5. Nicht markierte (fehlende) Zutaten in die Supabase shopping_list übertragen
+async function transferMissingIngredientsToShoppingList() {
+  // Filtere alle heraus, die NICHT zuhause sind (atHome === false)
+  const missingItems = currentRecipeIngredients.filter(ing => !ing.atHome);
+
+  if (missingItems.length === 0) {
+    alert('Alles ist bereits zuhause vorrätig! Es muss nichts eingekauft werden.');
+    closeRecipeModal();
+    return;
+  }
+
+  // Vorbereitung für Supabase Insert (nutzt deine 'text' und 'done' Spalten)
+  const payloads = missingItems.map(ing => ({
+    text: ing.name,
+    done: false
+  }));
+
+  const { data, error } = await db
+    .from('shopping_list')
+    .insert(payloads)
+    .select();
+
+  if (error) {
+    console.error('Fehler beim Übertragen zur Einkaufsliste:', error);
+    alert('Fehler beim Speichern in der Einkaufsliste.');
+    return;
+  }
+
+  // Optional: Auch direkt in den ingredient_catalog aufnehmen, falls noch nicht vorhanden
+  // (Damit sie im Katalog-Grid der Einkaufsliste auch auftauchen)
+  for (const item of missingItems) {
+    const exists = ingredientCatalog.find(c => c.name.toLowerCase() === item.name.toLowerCase());
+    if (!exists) {
+      await db.from('ingredient_catalog').insert([{ name: item.name }]);
+    }
+  }
+
+  // Lokale Einkaufsliste aktualisieren falls die Funktion existiert
+  if (typeof fetchShoppingList === 'function') {
+    fetchShoppingList();
+  }
+
+  closeRecipeModal();
+  alert(`${missingItems.length} fehlende Zutat(en) wurden zur Einkaufsliste hinzugefügt! 🛒`);
+}
+
+// Hilfsfunktion: Ermittelt die aktuelle Kalenderwoche & Jahr
+function getCurrentWeekAndYear() {
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  d.setDate(d.getDate() + 4 - (d.getDay() || 7));
+  const yearStart = new Date(d.getFullYear(), 0, 1);
+  const weekNo = Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+  return { week: weekNo, year: d.getFullYear() };
+}
+
+// Wandelt Strings wie "KW 37 (2026)" oder "KW 37" in eine fortlaufende Wochenzahl um
+function parseKWToAbsWeek(weekNameStr) {
+  if (!weekNameStr) return null;
+  
+  const kwMatch = weekNameStr.match(/KW\s*(\d+)/i);
+  const yearMatch = weekNameStr.match(/\((\d{4})\)/);
+
+  if (!kwMatch) return null;
+
+  const kw = parseInt(kwMatch[1], 10);
+  const currentYear = new Date().getFullYear();
+  const year = yearMatch ? parseInt(yearMatch[1], 10) : currentYear;
+
+  return (year * 52) + kw; // Wandelt Jahr + KW in eine vergleichbare Zahl um
+}
+
+// Berechnet die Wochendifferenz für ein Gericht
+function getWeeksSinceLastCooked(recipeName) {
+  const currentInfo = getCurrentWeekAndYear();
+  const currentAbsWeek = (currentInfo.year * 52) + currentInfo.week;
+
+  let maxCookedAbsWeek = null;
+
+  // Durchsuche alle Pläne in Supabase anhand von week_name
+  allSavedPlans.forEach(plan => {
+    if (!plan.meals || !plan.week_name) return;
+
+    const mealsString = JSON.stringify(plan.meals).toLowerCase();
+    if (mealsString.includes(recipeName.toLowerCase())) {
+      const planAbsWeek = parseKWToAbsWeek(plan.week_name);
+      
+      // Betrachte nur Pläne, die bis einschließlich JETZT stattfinden (nicht die Zukunft)
+      if (planAbsWeek && planAbsWeek <= currentAbsWeek) {
+        if (maxCookedAbsWeek === null || planAbsWeek > maxCookedAbsWeek) {
+          maxCookedAbsWeek = planAbsWeek;
+        }
+      }
+    }
+  });
+
+  if (maxCookedAbsWeek === null) return 999; // Noch nie gekocht
+
+  return currentAbsWeek - maxCookedAbsWeek;
+}
+
+// Liefert die Farbwerte gemäß deiner Vorgabe
+function getRecipeStatusColor(recipe) {
+  // Wenn das Rezept nicht existiert oder die Checkbox NICHT aktiviert ist: neutral bleiben!
+  if (!recipe || !recipe.track_status) { 
+    return { color: 'neutral', label: null };
+  }
+
+  if (!allPlansState || allPlansState.length === 0) {
+    return { color: '#22c55e', label: 'Grün' };
+  }
+
+  const cleanRecipeName = recipe.name.trim().toLowerCase();
+
+  const currentKW = getISOWeekDetails(0).weekString;
+  const lastKW = getISOWeekDetails(-1).weekString;
+  const twoWeeksAgoKW = getISOWeekDetails(-2).weekString;
+
+  // 1. Diese oder letzte Woche -> ROT
+  const inCurrentOrLastWeek = allPlansState.some(plan => {
+    if (plan.week_name === currentKW || plan.week_name === lastKW) {
+      if (!plan.meals) return false;
+      return Object.values(plan.meals).some(meal => 
+        meal && meal.toLowerCase().includes(cleanRecipeName)
+      );
+    }
+    return false;
+  });
+
+  if (inCurrentOrLastWeek) {
+    return { color: '#ef4444', label: 'Diese / Letzte Woche' };
+  }
+
+  // 2. Vor 2 Wochen -> GELB
+  const inTwoWeeksAgo = allPlansState.some(plan => {
+    if (plan.week_name === twoWeeksAgoKW) {
+      if (!plan.meals) return false;
+      return Object.values(plan.meals).some(meal => 
+        meal && meal.toLowerCase().includes(cleanRecipeName)
+      );
+    }
+    return false;
+  });
+
+  if (inTwoWeeksAgo) {
+    return { color: '#eab308', label: 'Vor 2 Wochen' };
+  }
+
+  // 3. Lange nicht gehabt -> GRÜN
+  return { color: '#22c55e', label: 'Grün' };
+}
+
+// Öffnet/Schließt das Menü beim Klick auf das Dropdown-Feld
+function toggleDropdown(triggerEl) {
+  const dropdown = triggerEl.closest('.custom-dropdown');
+  const menu = dropdown ? dropdown.querySelector('.dropdown-menu') : null;
+  if (!menu) return;
+
+  const isOpen = menu.style.display === 'block';
+
+  // Alle anderen Menüs schließen & Overlays zurücksetzen
+  document.querySelectorAll('.dropdown-menu').forEach(m => {
+    m.style.display = 'none';
+    m.style.position = 'absolute';
+    m.style.top = '100%';
+    m.style.left = '0';
+    m.style.transform = 'none';
+  });
+
+  if (!isOpen) {
+    // Menü als zentriertes Modal anzeigen
+    menu.style.display = 'block';
+    menu.style.position = 'fixed';
+    menu.style.top = '50%';
+    menu.style.left = '50%';
+    menu.style.transform = 'translate(-50%, -50%)';
+    menu.style.width = '90%';
+    menu.style.maxWidth = '450px';
+    menu.style.maxHeight = '70vh'; // Nutzt bis zu 70% der Bildschirmhöhe
+    menu.style.zIndex = '9999';
+    menu.style.boxShadow = '0 10px 25px rgba(0, 0, 0, 0.3)';
+    
+    // Backdrop / Abdunklung für den Hintergrund
+    let backdrop = document.getElementById('dropdown-backdrop');
+    if (!backdrop) {
+      backdrop = document.createElement('div');
+      backdrop.id = 'dropdown-backdrop';
+      backdrop.style.cssText = 'position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0, 0, 0, 0.4); z-index: 9998; backdrop-filter: blur(2px);';
+      document.body.appendChild(backdrop);
+    }
+    backdrop.style.display = 'block';
+
+    // Klick auf den Hintergrund schließt das Menü wieder
+    backdrop.onclick = closeAllCustomDropdowns;
+  } else {
+    closeAllCustomDropdowns();
+  }
+}
+
+function closeAllCustomDropdowns() {
+  document.querySelectorAll('.dropdown-menu').forEach(m => {
+    m.style.display = 'none';
+  });
+  
+  // Backdrop komplett aus dem DOM entfernen
+  const backdrop = document.getElementById('dropdown-backdrop');
+  if (backdrop) {
+    backdrop.remove();
+  }
+}
+
+// Behandelt den Klick auf die Kachel, um die Checkbox zu toggeln
+function toggleMealCheckbox(container, event) {
+  const checkbox = container.querySelector('.meal-select-checkbox');
+  if (checkbox && event.target !== checkbox) {
+    checkbox.checked = !checkbox.checked;
+  }
+}
+
+// Speichert alle angehakten Gerichte kommasepariert im Wochentag ab
+function confirmMealSelection(buttonEl) {
+  const dropdown = buttonEl.closest('.custom-dropdown');
+  const dayCard = buttonEl.closest('.day-card-edit');
+
+  if (dropdown && dayCard) {
+    // Alle aktivierten Checkboxen im aktuellen Dropdown sammeln
+    const checkedBoxes = dropdown.querySelectorAll('.meal-select-checkbox:checked');
+    const selectedMeals = Array.from(checkedBoxes).map(cb => cb.value);
+
+    if (selectedMeals.length > 0) {
+      const textarea = dayCard.querySelector('textarea');
+      const dayName = dayCard.querySelector('h4') ? dayCard.querySelector('h4').innerText.trim() : null;
+
+      if (textarea) {
+        const newMealsString = selectedMeals.join(', ');
+
+        if (!textarea.value.trim()) {
+          textarea.value = newMealsString;
+        } else {
+          textarea.value += `, ${newMealsString}`;
+        }
+
+        if (dayName && typeof updateMeal === 'function') {
+          updateMeal(dayName, textarea.value);
+        }
+      }
+    }
+  }
+
+  // Dropdown & unscharfen Backdrop sauber schließen
+  closeAllCustomDropdowns();
+}
+
+// Schließt offene Menüs automatisch, wenn man irgendwo außerhalb klickt
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('.custom-dropdown')) {
+    document.querySelectorAll('.dropdown-menu').forEach(m => m.style.display = 'none');
+  }
+});
+
+async function fetchSavedPlans() {
+  const { data, error } = await db.from('weekly_plans').select('*');
+  if (!error && data) {
+    allSavedPlans = data;
+    renderRecipesAndDishes(); // Aktualisiert die Farben, sobald die Pläne geladen sind
+  }
+}
+
+// --- INITIALISIERUNG ---
+    switchMainTab('essensplan');
+    if (typeof changeSelectedWeek === 'function') {
+      changeSelectedWeek(0); // Lädt sofort die aktuelle Woche beim App-Start!
+    }
+  </script>
+</body>
+</html>
