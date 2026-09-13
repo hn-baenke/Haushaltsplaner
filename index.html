@@ -698,11 +698,11 @@ body, html {
 </section>
 
 <!-- TAB 3: EINKAUFSLISTE (Versteckt bis aktiviert) -->
-<section id="shopping" class="tab-content" style="display: none; flex-direction: column; height: 100dvh; max-height: calc(100vh - 70px); position: relative; padding: 0;">
+<section id="shopping" class="tab-content" style="display: none; flex-direction: column; height: 100dvh; max-height: 100vh; position: relative; padding: 0; box-sizing: border-box;">
   
-  <div style="flex: 1; overflow-y: auto; padding: 12px 12px 10px 12px; display: flex; flex-direction: column; gap: 12px;">
+  <div style="flex: 1; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 12px; -webkit-overflow-scrolling: touch;">
     
-    <div class="card">
+    <div class="card" style="margin: 0;">
       <div class="actions-bar" style="margin-bottom: 8px;">
         <h3 style="margin: 0;">🛒 Einkaufsliste</h3>
         <button class="btn btn-secondary" style="font-size: 0.8rem;" onclick="clearCheckedShoppingItems()">Erledigte löschen</button>
@@ -711,7 +711,7 @@ body, html {
         </div>
     </div>
 
-    <div class="card" style="flex: 1; min-height: 150px;">
+    <div class="card" style="margin: 0; flex: 1; min-height: 120px;">
       <h3 style="font-size: 1rem; margin-top: 0; margin-bottom: 12px;">📚 Artikel-Katalog</h3>
       <div id="catalog-items-container" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(95px, 1fr)); gap: 8px;">
         </div>
@@ -719,16 +719,15 @@ body, html {
 
   </div>
 
-  <div style="position: sticky; bottom: 0; left: 0; right: 0; background: var(--bg-main, #f8fafc); padding: 10px 12px; border-top: 1px solid var(--border); z-index: 10; width: 100%; box-sizing: border-box;">
-    <div style="display: flex; gap: 8px;">
-      <input type="text" id="shopping-live-filter" placeholder="🔍 Artikel suchen oder neu anlegen..." oninput="filterShoppingCatalog(this.value)" style="flex: 1; padding: 10px 14px; border-radius: 8px; border: 1px solid var(--border); font-size: 0.95rem; outline: none; background: white; margin: 0;">
-      <button type="button" id="btn-add-new-item" class="btn btn-primary" style="display: none; white-space: nowrap;" onclick="addNewItemFromFilter()">+ Neu</button>
+  <div style="position: sticky; bottom: 0; left: 0; right: 0; background: #ffffff; padding: 10px 12px; border-top: 1px solid var(--border, #e2e8f0); z-index: 100; box-shadow: 0 -4px 12px rgba(0,0,0,0.05);">
+    <div style="display: flex; gap: 8px; width: 100%;">
+      <input type="text" id="shopping-live-filter" placeholder="🔍 Artikel suchen oder neu anlegen..." oninput="filterShoppingCatalog(this.value)" style="flex: 1; padding: 12px 14px; border-radius: 10px; border: 1px solid var(--border, #cbd5e1); font-size: 1rem; outline: none; background: #f8fafc; margin: 0;">
+      <button type="button" id="btn-add-new-item" class="btn btn-primary" style="display: none; white-space: nowrap; padding: 0 16px; border-radius: 10px;" onclick="addNewItemFromFilter()">+ Neu</button>
     </div>
   </div>
 
 </section>
   
-
 <!-- MODALS -->
 <div id="modal-add-recipe" class="modal-overlay">
   <div class="modal-card">
