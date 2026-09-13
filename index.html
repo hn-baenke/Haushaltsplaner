@@ -697,29 +697,35 @@ body, html {
 
 </section>
 
-<!-- TAB 3: EINKAUFSLISTE (Versteckt bis aktiviert) -->
-<section id="shopping" class="tab-content" style="display: none; flex-direction: column; height: 100dvh; max-height: 100vh; position: relative; padding: 0; box-sizing: border-box;">
+<!-- TAB 3: EINKAUFSLISTE -->
+<section id="shopping" class="tab-content" style="display: none; height: 100vh; height: 100dvh; overflow: hidden; position: relative; padding: 0; box-sizing: border-box;">
   
-  <div style="flex: 1; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 12px; -webkit-overflow-scrolling: touch;">
+  <!-- 1. SCROLLBARER INHALT (Nimmt genau den Platz oberhalb der Suchleiste ein) -->
+  <div style="height: calc(100% - 70px); overflow-y: auto; padding: 12px 12px 20px 12px; display: flex; flex-direction: column; gap: 12px; -webkit-overflow-scrolling: touch;">
     
+    <!-- Aktuelle Einkaufsliste -->
     <div class="card" style="margin: 0;">
       <div class="actions-bar" style="margin-bottom: 8px;">
         <h3 style="margin: 0;">🛒 Einkaufsliste</h3>
         <button class="btn btn-secondary" style="font-size: 0.8rem;" onclick="clearCheckedShoppingItems()">Erledigte löschen</button>
       </div>
       <div id="active-shopping-list">
-        </div>
+        <!-- Dynamischer Inhalt -->
+      </div>
     </div>
 
+    <!-- Artikel-Katalog Grid -->
     <div class="card" style="margin: 0; flex: 1; min-height: 120px;">
       <h3 style="font-size: 1rem; margin-top: 0; margin-bottom: 12px;">📚 Artikel-Katalog</h3>
       <div id="catalog-items-container" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(95px, 1fr)); gap: 8px;">
-        </div>
+        <!-- Dynamische Kacheln -->
+      </div>
     </div>
 
   </div>
 
-  <div style="position: sticky; bottom: 0; left: 0; right: 0; background: #ffffff; padding: 10px 12px; border-top: 1px solid var(--border, #e2e8f0); z-index: 100; box-shadow: 0 -4px 12px rgba(0,0,0,0.05);">
+  <!-- 2. FIXIERTE SUCHLEISTE (Sitzt bombenfest unten & schiebt sich über die Tastatur) -->
+  <div style="position: fixed; bottom: 0; left: 0; right: 0; width: 100%; background: #ffffff; padding: 10px 12px; border-top: 1px solid var(--border, #cbd5e1); z-index: 9999; box-shadow: 0 -4px 15px rgba(0,0,0,0.1); box-sizing: border-box;">
     <div style="display: flex; gap: 8px; width: 100%;">
       <input type="text" id="shopping-live-filter" placeholder="🔍 Artikel suchen oder neu anlegen..." oninput="filterShoppingCatalog(this.value)" style="flex: 1; padding: 12px 14px; border-radius: 10px; border: 1px solid var(--border, #cbd5e1); font-size: 1rem; outline: none; background: #f8fafc; margin: 0;">
       <button type="button" id="btn-add-new-item" class="btn btn-primary" style="display: none; white-space: nowrap; padding: 0 16px; border-radius: 10px;" onclick="addNewItemFromFilter()">+ Neu</button>
@@ -727,7 +733,7 @@ body, html {
   </div>
 
 </section>
-  
+
 <!-- MODALS -->
 <div id="modal-add-recipe" class="modal-overlay">
   <div class="modal-card">
