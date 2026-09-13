@@ -557,6 +557,20 @@
       border-radius: 8px;
       font-size: 0.9rem;
     }
+
+    /* Automatische Anpassung der Spalten je nach Bildschirmbreite */
+#catalog-items-container {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)) !important;
+  gap: 8px !important;
+}
+
+/* Verhindert unschönes horizontales Wackeln/Scrollen auf dem Smartphone */
+body, html {
+  max-width: 100vw;
+  overflow-x: hidden;
+}
+    
   </style>
 </head>
 <body>
