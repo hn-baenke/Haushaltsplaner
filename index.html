@@ -3201,17 +3201,17 @@ async function fetchSavedPlans() {
 
 // Automatisches Scrollen zum Artikel-Katalog beim Tippen/Fokussieren
 function scrollToCatalog() {
-  const catalogElement = document.getElementById('catalog-card');
-  if (catalogElement) {
-    catalogElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  // Das übergeordnete Scroll-Element der Einkaufsliste greifen
+  const scrollContainer = document.querySelector('#shopping > div');
+  if (scrollContainer) {
+    // Scrollt im inneren Container nach ganz unten zum Katalog
+    scrollContainer.scrollTo({
+      top: scrollContainer.scrollHeight,
+      behavior: 'smooth'
+    });
   }
 }
 
-// --- INITIALISIERUNG ---
-    switchMainTab('essensplan');
-    if (typeof changeSelectedWeek === 'function') {
-      changeSelectedWeek(0); // Lädt sofort die aktuelle Woche beim App-Start!
-    }
   </script>
 </body>
 </html>
