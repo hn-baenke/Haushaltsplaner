@@ -3201,15 +3201,14 @@ async function fetchSavedPlans() {
 
 // Automatisches Scrollen zum Artikel-Katalog beim Tippen/Fokussieren
 function scrollToCatalog() {
-  // Das übergeordnete Scroll-Element der Einkaufsliste greifen
-  const scrollContainer = document.querySelector('#shopping > div');
-  if (scrollContainer) {
-    // Scrollt im inneren Container nach ganz unten zum Katalog
-    scrollContainer.scrollTo({
-      top: scrollContainer.scrollHeight,
-      behavior: 'smooth'
-    });
-  }
+  // Bedenkt die Ausfahr-Animation der Smartphone-Tastatur
+  setTimeout(() => {
+    const scrollContainer = document.querySelector('#shopping > div');
+    if (scrollContainer) {
+      // Harter, direkter Sprung an das Ende des Containers
+      scrollContainer.scrollTop = scrollContainer.scrollHeight;
+    }
+  }, 100);
 }
 
   </script>
