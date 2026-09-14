@@ -703,7 +703,7 @@ body, html {
   <!-- SCROLLBARER CONTAINER -->
   <div style="flex: 1; overflow-y: auto; padding: 12px 12px 80px 12px; display: flex; flex-direction: column; gap: 12px; -webkit-overflow-scrolling: touch;">
     
-    <!-- 1. OBEN: Aktuelle Einkaufsliste (wird beim Suchen ausgeblendet) -->
+    <!-- 1. OBEN: Aktuelle Einkaufsliste -->
     <div id="active-shopping-card" class="card" style="margin: 0;">
       <div class="actions-bar" style="margin-bottom: 8px;">
         <h3 style="margin: 0;">🛒 Einkaufsliste</h3>
@@ -724,10 +724,22 @@ body, html {
 
   </div>
 
-  <!-- 3. UNTEN: Fixiertes Suchfeld -->
-  <div style="position: fixed; bottom: 0; left: 0; right: 0; width: 100%; background: #ffffff; padding: 10px 12px; border-top: 1px solid var(--border, #cbd5e1); z-index: 9999; box-shadow: 0 -4px 15px rgba(0,0,0,0.1); box-sizing: border-box;">
+  <!-- 3. UNTEN: Fixierte Suchleiste mit Schwebekasten -->
+  <div style="position: fixed; bottom: 0; left: 0; right: 0; width: 100%; background: #ffffff; padding: 10px 12px; border-top: 1px solid var(--border, #cbd5e1); z-index: 9999; box-sizing: border-box;">
+    
+    <!-- Autocomplete Overlay (Klappt direkt über dem Textfeld auf) -->
+    <div id="autocomplete-results" style="display: none; max-height: 220px; overflow-y: auto; background: #ffffff; border: 1px solid var(--border, #cbd5e1); border-radius: 12px; box-shadow: 0 -8px 25px rgba(0,0,0,0.15); margin-bottom: 8px; padding: 6px;">
+      <!-- Hier landen die Suchtreffer per JS -->
+    </div>
+
     <div style="display: flex; gap: 8px; width: 100%;">
-      <input type="text" id="shopping-live-filter" placeholder="🔍 Artikel suchen oder neu anlegen..." oninput="filterShoppingCatalog(this.value)" style="flex: 1; padding: 12px 14px; border-radius: 10px; border: 1px solid var(--border, #cbd5e1); font-size: 1rem; outline: none; background: #f8fafc; margin: 0;">
+      <input type="text" 
+             id="shopping-live-filter" 
+             placeholder="🔍 Artikel suchen oder neu anlegen..." 
+             oninput="handleSearchInput(this.value)" 
+             onfocus="handleSearchInput(this.value)" 
+             onblur="hideAutocompleteWithDelay()"
+             style="flex: 1; padding: 12px 14px; border-radius: 10px; border: 1px solid var(--border, #cbd5e1); font-size: 1rem; outline: none; background: #f8fafc; margin: 0;">
       <button type="button" id="btn-add-new-item" class="btn btn-primary" style="display: none; white-space: nowrap; padding: 0 16px; border-radius: 10px;" onclick="addNewItemFromFilter()">+ Neu</button>
     </div>
   </div>
@@ -2501,6 +2513,86 @@ async function addNewItemFromFilter() {
 
   inputEl.value = '';
   renderShoppingView('');
+}
+
+function handleSearchInput(value) {
+  const query = value.trim().toLowerCase();
+  const overlay = document.getElementById('autocomplete-results');
+  const activeCard = document.getElementById('active-shopping-card');
+
+  if (!overlay) return;
+
+  if (query.length === 0) {
+    overlay.style.display = 'none';
+    if (activeCard) activeCard.style.display = 'block';
+    return;
+  }
+
+  if (activeCard) activeCard.style.display = 'none';
+
+  // GREIFT AUF DEINE KATALOG-DATEN ZU:
+  // (Prüft 'articles', 'catalog' oder liest zur Not die Namen direkt aus deinen UI-Kacheln)
+  let itemsSource = [];
+  if (typeof articles !== 'undefined') itemsSource = articles;
+  else if (typeof shoppingCatalog !== 'undefined') itemsSource = shoppingCatalog;
+  else if (typeof catalogItems !== 'undefined') itemsSource = catalogItems;
+  else {
+    // Fallback: Liest die Namen direkt aus den bestehenden Kacheln auf der Seite
+    itemsSource = Array.from(document.querySelectorAll('#catalog-items-container .card, #catalog-items-container div'))
+      .map(el => el.innerText.split('\n')[0].trim())
+      .filter(name => name && !name.includes('+'));
+  }
+
+  // Treffer filtern
+  const matches = itemsSource.filter(item => {
+    const itemName = typeof item === 'string' ? item : (item.name || item.title || '');
+    return itemName.toLowerCase().includes(query);
+  });
+
+  if (matches.length > 0) {
+    overlay.innerHTML = matches.map(item => {
+      const name = typeof item === 'string' ? item : (item.name || item.title);
+      return `
+        <div onclick="addArticleFromOverlay('${name}')" style="display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; border-bottom: 1px solid #f1f5f9; cursor: pointer;">
+          <span style="font-weight: 500; font-size: 0.95rem; color: #1e293b;">${name}</span>
+          <span style="color: var(--primary, #2563eb); font-weight: 600; font-size: 0.85rem; background: #eff6ff; padding: 4px 8px; border-radius: 6px;">+ Hinzufügen</span>
+        </div>
+      `;
+    }).join('');
+  } else {
+    overlay.innerHTML = `
+      <div style="padding: 12px; color: #64748b; font-size: 0.9rem; text-align: center;">
+        Kein Artikel "${value}" im Katalog
+      </div>`;
+  }
+
+  overlay.style.display = 'block';
+}
+
+function hideAutocompleteWithDelay() {
+  setTimeout(() => {
+    const overlay = document.getElementById('autocomplete-results');
+    const activeCard = document.getElementById('active-shopping-card');
+    if (overlay) overlay.style.display = 'none';
+    if (activeCard) activeCard.style.display = 'block';
+  }, 250);
+}
+
+function addArticleFromOverlay(articleName) {
+  // Ruft deine vorhandene Hinzufügen-Funktion auf (z.B. toggleShoppingItem)
+  if (typeof toggleShoppingItem === 'function') {
+    toggleShoppingItem(articleName);
+  }
+  
+  // Suchfeld leeren & aufräumen
+  const input = document.getElementById('shopping-live-filter');
+  if (input) input.value = '';
+  
+  const overlay = document.getElementById('autocomplete-results');
+  if (overlay) overlay.style.display = 'none';
+  
+  const activeCard = document.getElementById('active-shopping-card');
+  if (activeCard) activeCard.style.display = 'block';
 }
 
 // 5. Abhaken / Löschen in der aktiven Einkaufsliste
