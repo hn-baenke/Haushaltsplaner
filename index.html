@@ -2423,7 +2423,11 @@ function renderShoppingView(filterQuery = '') {
 
 // 2. Live-Filter ausführen, wenn man in das fixierte Feld tippt
 function filterShoppingCatalog(value) {
+  // 1. Erst die Kacheln neu rendern
   renderShoppingView(value);
+  
+  // 2. Erst NACH dem Rendern und Ausfahren der Tastatur nach unten scrollen
+  scrollToCatalog();
 }
 
 // 3. Artikel aus dem Katalog zur Einkaufsliste hinzufügen
@@ -3201,15 +3205,17 @@ async function fetchSavedPlans() {
 
 // Automatisches Scrollen zum Artikel-Katalog beim Tippen/Fokussieren
 function scrollToCatalog() {
-  // Bedenkt die Ausfahr-Animation der Smartphone-Tastatur
-  setTimeout(() => {
-    const scrollContainer = document.querySelector('#shopping > div');
-    if (scrollContainer) {
-      // Harter, direkter Sprung an das Ende des Containers
-      scrollContainer.scrollTop = scrollContainer.scrollHeight;
-    }
-  }, 100);
+  // requestAnimationFrame stellt sicher, dass das DOM fertig gezeichnet ist
+  requestAnimationFrame(() => {
+    setTimeout(() => {
+      const scrollContainer = document.querySelector('#shopping > div');
+      if (scrollContainer) {
+        scrollContainer.scrollTop = scrollContainer.scrollHeight;
+      }
+    }, 50);
+  });
 }
+
 
   </script>
 </body>
