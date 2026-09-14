@@ -4,7 +4,11 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Haushaltsplaner</title>
-  
+  <!-- Favicon für Browser-Tabs -->
+<link rel="icon" type="image/png" href="icon.png">
+
+<!-- App-Icon für Mobile / Homescreen (iOS & Android) -->
+<link rel="apple-touch-icon" href="icon.png">
   <!-- Supabase JS Client CDN -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
@@ -2516,23 +2520,23 @@ async function addNewItemFromFilter() {
 }
 
 function handleSearchInput(value) {
-function handleSearchInput(value) {
   const query = value.trim();
   const overlay = document.getElementById('autocomplete-results');
   const activeCard = document.getElementById('active-shopping-card');
 
   if (!overlay) return;
 
-  // Wenn das Feld leer ist -> Overlay zu
+  // 1. Wenn nichts getippt wurde: Overlay ausblenden & Hauptliste anzeigen
   if (query.length === 0) {
     overlay.style.display = 'none';
     if (activeCard) activeCard.style.display = 'block';
     return;
   }
 
+  // 2. Aktive Liste oben während der Suche ausblenden für mehr Platz
   if (activeCard) activeCard.style.display = 'none';
 
-  // Datenquelle für Katalog laden
+  // 3. Datenquelle ermitteln (Array oder Fallback aus den Kacheln im DOM)
   let itemsSource = [];
   if (typeof articles !== 'undefined') itemsSource = articles;
   else if (typeof shoppingCatalog !== 'undefined') itemsSource = shoppingCatalog;
@@ -2543,28 +2547,31 @@ function handleSearchInput(value) {
       .filter(name => name && !name.includes('+'));
   }
 
-  // Passende Katalog-Treffer filtern
+  // 4. Katalog nach Suchbegriff filtern
   const matches = itemsSource.filter(item => {
     const itemName = typeof item === 'string' ? item : (item.name || item.title || '');
     return itemName.toLowerCase().includes(query.toLowerCase());
   });
 
-  let overlayHTML = '';
+  // Escaping für Hochkommas im Text (verhindert JS-Fehler bei Namen wie "D'Avola")
+  const safeQuery = query.replace(/'/g, "\\'");
 
-  // 1. OPTION IMMER ANZEIGEN: Neuen Artikel erstellen
-  overlayHTML += `
-    <div onclick="addNewArticleFromOverlay('${query.replace(/'/g, "\\'")}')" style="display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; border-bottom: 1px solid #e2e8f0; cursor: pointer; background: #f0fdf4; border-radius: 8px; margin-bottom: 4px;">
+  // 5. HTML für Overlay aufbauen:
+  // Option A: IMMER ganz oben -> Option zum Neuanlegen des getippten Begriffs
+  let overlayHTML = `
+    <div onclick="addNewArticleFromOverlay('${safeQuery}')" style="display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; border-bottom: 1px solid #e2e8f0; cursor: pointer; background: #f0fdf4; border-radius: 8px; margin-bottom: 4px;">
       <span style="font-weight: 600; font-size: 0.95rem; color: #166534;">➕ "${query}" neu anlegen</span>
-      <span style="color: #15803d; font-weight: 700; font-size: 0.85rem;">Erstellen</span>
+      <span style="color: #15803d; font-weight: 700; font-size: 0.85rem; background: #dcfce7; padding: 4px 8px; border-radius: 6px;">Erstellen</span>
     </div>
   `;
 
-  // 2. KATALOG-TREFFER DARUNTER AUFLISTEN
+  // Option B: Gefundene Katalog-Treffer darunter auflisten
   if (matches.length > 0) {
     overlayHTML += matches.map(item => {
       const name = typeof item === 'string' ? item : (item.name || item.title);
+      const safeName = name.replace(/'/g, "\\'");
       return `
-        <div onclick="addArticleFromOverlay('${name.replace(/'/g, "\\'")}')" style="display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; border-bottom: 1px solid #f1f5f9; cursor: pointer;">
+        <div onclick="addArticleFromOverlay('${safeName}')" style="display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; border-bottom: 1px solid #f1f5f9; cursor: pointer;">
           <span style="font-weight: 500; font-size: 0.95rem; color: #1e293b;">${name}</span>
           <span style="color: var(--primary, #2563eb); font-weight: 600; font-size: 0.85rem; background: #eff6ff; padding: 4px 8px; border-radius: 6px;">+ Hinzufügen</span>
         </div>
@@ -2576,25 +2583,23 @@ function handleSearchInput(value) {
   overlay.style.display = 'block';
 }
 
-  function addNewArticleFromOverlay(newItemName) {
-  // Setzt den Text ins Input-Feld, damit deine Logik den Namen kennt
+function addNewArticleFromOverlay(newItemName) {
   const input = document.getElementById('shopping-live-filter');
   if (input) input.value = newItemName;
 
-  // Ruft deine bestehende Funktion zum Anlegen neuer Artikel auf
+  // Ruft deine bestehende Funktion zum Erstellen auf
   if (typeof addNewItemFromFilter === 'function') {
     addNewItemFromFilter();
   }
 
-  // Eingabe leeren und Overlay schließen
+  // Suchfeld & Overlay zurücksetzen
   if (input) input.value = '';
   const overlay = document.getElementById('autocomplete-results');
   if (overlay) overlay.style.display = 'none';
 
   const activeCard = document.getElementById('active-shopping-card');
   if (activeCard) activeCard.style.display = 'block';
-  }
-  
+}
 
 function hideAutocompleteWithDelay() {
   setTimeout(() => {
