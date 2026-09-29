@@ -59,40 +59,40 @@
 
     .main-nav {
   display: flex !important;
-  justify-content: center !important; /* Zentriert die Buttons im Container */
+  justify-content: space-between !important;
   align-items: center !important;
-  width: 100% !important;             /* Nutzt die volle verfügbare Breite */
+  width: 100% !important;
   max-width: 100% !important;
-  margin: 0 auto 16px auto !important; /* Macht den Außenabstand links/rechts gleich */
-  gap: 8px !important;
+  margin: 0 auto 16px auto !important;
+  gap: 6px !important;
   padding: 0 !important;
   box-sizing: border-box !important;
 }
 
-    .main-nav button {
-  flex: 1 1 0px !important;            /* Verteilt den Platz absolut gleichmäßig auf alle 4 Buttons */
-  min-width: 0 !important;             /* Verhindert Überlaufen auf sehr schmalen Screens */
-  height: 64px !important;    /* Feste Höhe für alle Tab-Buttons */
+.main-nav button {
+  flex: 1 1 0px !important; /* Verteilt den Platz exakt gleichmäßig auf die 4 Buttons */
+  min-width: 0 !important;   /* Verhindert Überlaufen */
+  height: 64px !important;
   display: flex !important;
   flex-direction: column !important;
   align-items: center !important;
   justify-content: center !important;
-  gap: 4px !important;
-  padding: 6px 8px !important;
+  gap: 2px !important;
+  padding: 6px 2px !important;
   
   border-radius: 12px !important;
   border: 1px solid #e2e8f0 !important;
   background: #ffffff !important;
   color: #475569 !important;
-  font-size: 0.75rem !important;
+  font-size: 0.7rem !important; /* Leicht angepasst, damit Einkaufsliste perfekt passt */
   font-weight: 600 !important;
   text-align: center !important;
-  white-space: nowrap !important; /* Keinen hässlichen Zeilenumbruch im Text */
+  white-space: nowrap !important;
   cursor: pointer;
   transition: all 0.2s ease;
 }
 
-    .main-nav button.active {
+.main-nav button.active {
   background: #3b82f6 !important;
   color: #ffffff !important;
   border-color: #3b82f6 !important;
@@ -706,13 +706,17 @@ body, html {
 </div>
 
   <header>
-  <h1>🏠 Haushaltsplaner</h1>
-  
+  <h1 style="display: flex; align-items: center; gap: 10px; font-size: 1.5rem; margin-bottom: 16px;">
+  <button onclick="switchMainTab('home')" 
+          style="background: none; border: 1px solid var(--border, #e2e8f0); border-radius: 8px; padding: 6px 10px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; transition: background 0.15s ease;"
+          onmouseover="this.style.background='var(--bg-secondary, #f8fafc)'"
+          onmouseout="this.style.background='none'"
+          title="Zur Startseite">
+    🏠
+  </button>
+  Haushaltsplaner
+</h1>
   <div class="main-nav">
-    <button id="btn-main-home" class="active" onclick="switchMainTab('home')">
-      <span class="icon">🏠</span>
-      <span>Start</span>
-    </button>
 
     <button id="btn-main-todos" onclick="switchMainTab('todos')">
       <span class="icon">📋</span>
