@@ -674,36 +674,114 @@ body, html {
     outline: 2px solid #3b82f6 !important;
     border-radius: 4px;
   }
+
+  .card[onclick] {
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.card[onclick]:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
     
   </style>
 </head>
 <body>
 
+<!-- Passwort-Overlay -->
+<div id="auth-overlay" style="position: fixed; inset: 0; background: #0f172a; display: flex; align-items: center; justify-content: center; z-index: 9999; padding: 20px;">
+  <div style="background: #ffffff; padding: 32px 24px; border-radius: 16px; max-width: 360px; width: 100%; text-align: center; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3);">
+    <div style="font-size: 2.5rem; margin-bottom: 8px;">🔒</div>
+    <h2 style="margin: 0 0 8px 0; font-size: 1.25rem; color: #0f172a; font-weight: 700;">Familienplaner</h2>
+    <p style="margin: 0 0 20px 0; font-size: 0.875rem; color: #64748b;">Bitte Passwort eingeben, um fortzufahren.</p>
+    
+    <form onsubmit="handleLogin(event)">
+      <input type="password" id="auth-input" placeholder="Passwort" autocomplete="current-password" required style="width: 100%; padding: 12px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 1rem; box-sizing: border-box; margin-bottom: 12px; text-align: center; outline: none;">
+      <button type="submit" id="auth-btn" style="width: 100%; padding: 12px; background: #2563eb; color: white; border: none; border-radius: 8px; font-size: 1rem; font-weight: 600; cursor: pointer;">
+        Anmelden
+      </button>
+    </form>
+    <p id="auth-error" style="color: #ef4444; font-size: 0.8rem; margin-top: 12px; display: none;">Falsches Passwort!</p>
+  </div>
+</div>
+
   <header>
   <h1>🏠 Haushaltsplaner</h1>
   
-<div class="main-nav">
-  <button id="btn-main-todos" onclick="switchMainTab('todos')">
-    <span class="icon">📋</span>
-    <span>To-Dos</span>
-  </button>
-  
-  <button id="btn-main-essensplan" class="active" onclick="switchMainTab('essensplan')">
-    <span class="icon">🍽️</span>
-    <span>Essensplan</span>
-  </button>
-  
-  <button id="btn-main-shopping" onclick="switchMainTab('shopping')">
-    <span class="icon">🛒</span>
-    <span>Einkaufsliste</span>
-  </button>
-  
-  <button id="btn-main-stundenplan" onclick="switchMainTab('stundenplan')">
-    <span class="icon">🎒</span>
-    <span>Stundenplan</span>
-  </button>
-</div>
+  <div class="main-nav">
+    <button id="btn-main-home" class="active" onclick="switchMainTab('home')">
+      <span class="icon">🏠</span>
+      <span>Start</span>
+    </button>
+
+    <button id="btn-main-todos" onclick="switchMainTab('todos')">
+      <span class="icon">📋</span>
+      <span>To-Dos</span>
+    </button>
+    
+    <button id="btn-main-essensplan" onclick="switchMainTab('essensplan')">
+      <span class="icon">🍽️</span>
+      <span>Essensplan</span>
+    </button>
+    
+    <button id="btn-main-shopping" onclick="switchMainTab('shopping')">
+      <span class="icon">🛒</span>
+      <span>Einkaufsliste</span>
+    </button>
+    
+    <button id="btn-main-stundenplan" onclick="switchMainTab('stundenplan')">
+      <span class="icon">🎒</span>
+      <span>Stundenplan</span>
+    </button>
+  </div>
 </header>
+
+<!-- TAB 0: STARTSEITE / DASHBOARD -->
+<section id="home" class="tab-content active" style="display: block; padding: 16px;">
+  
+  <!-- A) Heutiges Gericht -->
+  <div onclick="switchMainTab('essensplan')" 
+       style="background: var(--bg-secondary, #ffffff); border-radius: 12px; padding: 16px; margin-bottom: 16px; border: 1px solid var(--border); box-shadow: 0 2px 4px rgba(0,0,0,0.05); cursor: pointer; transition: transform 0.15s ease, box-shadow 0.15s ease;"
+       onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.08)';"
+       onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 4px rgba(0,0,0,0.05)';">
+    <div style="font-size: 0.8rem; font-weight: 600; text-transform: uppercase; color: var(--primary, #2563eb); letter-spacing: 0.5px; margin-bottom: 4px;">
+      🍽 Heute auf dem Speiseplan
+    </div>
+    <div id="dashboard-today-meal" style="font-size: 1.1rem; font-weight: 700; color: var(--text);">
+      Lade Speiseplan...
+    </div>
+  </div>
+
+  <!-- B) Anstehende To-Dos diese Woche -->
+  <div onclick="switchMainTab('todos')" 
+       style="background: var(--bg-secondary, #ffffff); border-radius: 12px; padding: 16px; margin-bottom: 16px; border: 1px solid var(--border); box-shadow: 0 2px 4px rgba(0,0,0,0.05); cursor: pointer; transition: transform 0.15s ease, box-shadow 0.15s ease;"
+       onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.08)';"
+       onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 4px rgba(0,0,0,0.05)';">
+    <div style="font-size: 0.8rem; font-weight: 600; text-transform: uppercase; color: #d97706; letter-spacing: 0.5px; margin-bottom: 8px;">
+      📅 To-Dos für diese Woche
+    </div>
+    <div id="dashboard-todos-container">
+      Lade To-Dos...
+    </div>
+  </div>
+
+  <!-- C) Offene Einkaufsliste-Vorschau -->
+  <div onclick="switchMainTab('shopping')" 
+       style="background: var(--bg-secondary, #ffffff); border-radius: 12px; padding: 16px; border: 1px solid var(--border); box-shadow: 0 2px 4px rgba(0,0,0,0.05); cursor: pointer; transition: transform 0.15s ease, box-shadow 0.15s ease;"
+       onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.08)';"
+       onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 4px rgba(0,0,0,0.05)';">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+      <div style="font-size: 0.8rem; font-weight: 600; text-transform: uppercase; color: #16a34a; letter-spacing: 0.5px;">
+        🛒 Offen auf der Einkaufsliste
+      </div>
+      <span id="dashboard-shopping-badge" style="font-size: 0.75rem; background: #dcfce7; color: #15803d; font-weight: 700; padding: 2px 8px; border-radius: 12px;">0</span>
+    </div>
+    <div id="dashboard-shopping-container">
+      Lade Einkaufsliste...
+    </div>
+  </div>
+
+</section>
 
 <!-- TAB 1: TO-DOS -->
 <section id="todos" class="tab-content" style="display: none;">
@@ -718,16 +796,16 @@ body, html {
         <option value="Sonstiges">Sonstiges</option>
       </select>
       <select id="todo-interval" class="form-select">
-  <option value="">Einmalige Aufgabe</option>
-  <option value="weekly">Jede Woche</option>
-  <option value="biweekly">Alle 2 Wochen</option>
-  <option value="monthly">Monatlich (am 1.)</option>
-</select>
-<!-- Datum / Frist (Optional) -->
-<div style="margin-top: 8px;">
-  <label for="todo-due-date" style="font-size: 0.75rem; color: var(--text-muted); display: block; margin-bottom: 2px;">Fällig bis (optional):</label>
-  <input type="date" id="todo-due-date" class="form-control" style="width: 100%;">
-</div>
+        <option value="">Einmalige Aufgabe</option>
+        <option value="weekly">Jede Woche</option>
+        <option value="biweekly">Alle 2 Wochen</option>
+        <option value="monthly">Monatlich (am 1.)</option>
+      </select>
+      <!-- Datum / Frist (Optional) -->
+      <div style="margin-top: 8px;">
+        <label for="todo-due-date" style="font-size: 0.75rem; color: var(--text-muted); display: block; margin-bottom: 2px;">Fällig bis (optional):</label>
+        <input type="date" id="todo-due-date" class="form-control" style="width: 100%;">
+      </div>
       <button type="submit" class="btn">Hinzufügen</button>
     </form>
   </div>
@@ -743,8 +821,8 @@ body, html {
   </div>
 </section>
 
-<!-- TAB 2: ESSENSPLAN (Standardmäßig aktiv) -->
-<section id="essensplan" class="tab-content active" style="display: block;">
+<!-- TAB 2: ESSENSPLAN (Jetzt standardmäßig ausgeblendet) -->
+<section id="essensplan" class="tab-content" style="display: none;">
   
   <div class="sub-nav-container">
     <nav class="sub-nav">
@@ -1157,6 +1235,7 @@ body, html {
     let activeEditingCatalogId = null;
     let pressTimer = null;
     let currentActiveDay = 'mo';
+    let shoppingChannel = null;
    
     // Rezept-Detailansicht Status
     let currentActiveRecipe = null;
@@ -1166,7 +1245,189 @@ body, html {
     let allPlansState = [];
 
     function openModal(id) { document.getElementById(id).classList.add('active'); }
-    function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+    function closeModal(id) { document.getElementById(id).classList.remove('active'); } 
+
+// Prüft beim Laden der Seite, ob bereits ein gültiger Schlüssel im Browser liegt
+function checkAuthOnLoad() {
+  const isAuth = localStorage.getItem("haushaltsplaner_authenticated");
+  const overlay = document.getElementById("auth-overlay");
+  
+  if (isAuth === "true" && overlay) {
+    overlay.style.display = "none";
+  }
+}
+
+// Schickt das Passwort zur Überprüfung an Supabase
+async function handleLogin(event) {
+  event.preventDefault();
+  const inputEl = document.getElementById("auth-input");
+  const errorEl = document.getElementById("auth-error");
+  const btnEl = document.getElementById("auth-btn");
+  const overlay = document.getElementById("auth-overlay");
+
+  const enteredPassword = inputEl.value;
+  btnEl.disabled = true;
+  btnEl.innerText = "Prüfe...";
+
+  try {
+    // Ruft die SQL-Funktion in Supabase auf
+    const { data: isValid, error } = await db.rpc('check_app_password', { 
+      user_password: enteredPassword 
+    });
+
+    if (error) throw error;
+
+    if (isValid) {
+      // Passwort korrekt -> Im Browser speichern
+      localStorage.setItem("haushaltsplaner_authenticated", "true");
+      if (overlay) overlay.style.display = "none";
+      if (errorEl) errorEl.style.display = "none";
+    } else {
+      // Passwort falsch
+      if (errorEl) {
+        errorEl.innerText = "Falsches Passwort!";
+        errorEl.style.display = "block";
+      }
+      inputEl.value = "";
+    }
+  } catch (err) {
+    console.error("Login Fehler:", err);
+    if (errorEl) {
+      errorEl.innerText = "Fehler bei der Verbindung!";
+      errorEl.style.display = "block";
+    }
+  } finally {
+    btnEl.disabled = false;
+    btnEl.innerText = "Anmelden";
+  }
+}
+
+// Beim Start ausführen
+document.addEventListener("DOMContentLoaded", checkAuthOnLoad);
+
+    async function loadDashboard() {
+  const now = new Date();
+  
+  // -------------------------------------------------------------
+  // 1. HEUTIGES GERICHT (meal_plans)
+  // -------------------------------------------------------------
+  const mealEl = document.getElementById('dashboard-today-meal');
+
+  // Wochentag im Speiseplan-Format ermitteln (Montag, Dienstag...)
+  const dayNames = ['Sonntag', 'Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag'];
+  const todayDayName = dayNames[now.getDay()];
+
+  // Aktuelle Kalenderwoche ermitteln (z. B. "KW 39 (2026)")
+  const tempDate = new Date(now.valueOf());
+  const dayNum = (now.getDay() + 6) % 7;
+  tempDate.setDate(tempDate.getDate() - dayNum + 3);
+  const firstThursday = tempDate.valueOf();
+  tempDate.setMonth(0, 1);
+  if (tempDate.getDay() !== 4) {
+    tempDate.setMonth(0, 1 + ((4 - tempDate.getDay() + 7) % 7));
+  }
+  const currentKWNum = 1 + Math.round((firstThursday - tempDate.valueOf()) / 604800000);
+  const currentKWString = `KW ${currentKWNum} (${now.getFullYear()})`;
+
+  try {
+    const { data: plan, error } = await db
+      .from('meal_plans')
+      .select('meals')
+      .eq('week_name', currentKWString)
+      .maybeSingle();
+
+    if (error) console.error('Supabase Fehler (meal_plans):', error);
+
+    if (plan && plan.meals && plan.meals[todayDayName]) {
+      if (mealEl) mealEl.innerText = plan.meals[todayDayName];
+    } else {
+      if (mealEl) mealEl.innerHTML = `<span style="color: var(--text-muted); font-weight: normal; font-size: 0.95rem;">Für heute (${todayDayName}) ist nichts eingetragen.</span>`;
+    }
+  } catch (err) {
+    console.error('Fehler beim Laden des Gerichts:', err);
+  }
+
+  // -------------------------------------------------------------
+  // 2. TO-DOS FÜR DIESE WOCHE (todos)
+  // -------------------------------------------------------------
+  const todosContainer = document.getElementById('dashboard-todos-container');
+  
+  // Ende der aktuellen Woche (Sonntag 23:59:59)
+  const endOfWeek = new Date(now);
+  const dayOfWeek = now.getDay() === 0 ? 7 : now.getDay();
+  endOfWeek.setDate(now.getDate() + (7 - dayOfWeek));
+  endOfWeek.setHours(23, 59, 59, 999);
+  const endOfWeekStr = endOfWeek.toISOString().split('T')[0];
+
+  try {
+    const { data: todos, error } = await db
+      .from('todos')
+      .select('*')
+      .eq('is_done', false)
+      .not('due_date', 'is', null)
+      .lte('due_date', endOfWeekStr)
+      .order('due_date', { ascending: true });
+
+    if (error) console.error('Supabase Fehler (todos):', error);
+
+    if (!todos || todos.length === 0) {
+      if (todosContainer) todosContainer.innerHTML = '<div style="color: var(--text-muted); font-size: 0.85rem;">Keine anstehenden To-Dos für diese Woche! 🎉</div>';
+    } else {
+      if (todosContainer) {
+        todosContainer.innerHTML = todos.map(todo => {
+          const dueDate = new Date(todo.due_date);
+          const dateFormatted = dueDate.toLocaleDateString('de-DE', { weekday: 'short', day: '2-digit', month: '2-digit' });
+          
+          return `
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--border);">
+              <span style="font-size: 0.9rem; color: var(--text); font-weight: 500;">${todo.text}</span>
+              <span style="font-size: 0.75rem; background: #fef3c7; color: #92400e; padding: 2px 6px; border-radius: 4px; font-weight: 600;">${dateFormatted}</span>
+            </div>
+          `;
+        }).join('');
+      }
+    }
+  } catch (err) {
+    console.error('Fehler beim Laden der To-Dos:', err);
+  }
+
+  // -------------------------------------------------------------
+  // 3. EINKAUFSLISTE (shopping_list)
+  // -------------------------------------------------------------
+  const shoppingContainer = document.getElementById('dashboard-shopping-container');
+  const badgeEl = document.getElementById('dashboard-shopping-badge');
+
+  try {
+    // Direkt nach allen ungelesenen/offenen Einträgen filtern
+    const { data: items, error } = await db
+      .from('shopping_list')
+      .select('*')
+      .eq('done', false);
+
+    if (error) console.error('Supabase Fehler (shopping_list):', error);
+
+    const totalCount = items ? items.length : 0;
+
+    if (badgeEl) badgeEl.innerText = totalCount;
+
+    if (totalCount === 0) {
+      if (shoppingContainer) {
+        shoppingContainer.innerHTML = '<div style="color: var(--text-muted); font-size: 0.85rem;">Einkaufsliste ist komplett leer.</div>';
+      }
+    } else {
+      if (shoppingContainer) {
+        const itemText = totalCount === 1 ? 'Artikel steht' : 'Artikel stehen';
+        shoppingContainer.innerHTML = `
+          <div style="font-size: 0.9rem; color: var(--text); font-weight: 500;">
+            🛒 Es sind aktuell <strong>${totalCount}</strong> Artikel auf der Einkaufsliste.
+          </div>
+        `;
+      }
+    }
+  } catch (err) {
+    console.error('Fehler beim Laden der Einkaufsliste:', err);
+  }
+}
 
     function getISOWeekDetails(offsetWeeks = 0) {
       const now = new Date();
@@ -2758,7 +3019,7 @@ function switchMainTab(tabId) {
   const activeTab = document.getElementById(tabId);
   if (activeTab) {
     activeTab.classList.add('active');
-    // Für die Einkaufsliste 'flex', für alle anderen (To-Dos, Essensplan, Stundenplan) 'block'
+    // Für die Einkaufsliste 'flex', für alle anderen (Dashboard, To-Dos, Essensplan, Stundenplan) 'block'
     activeTab.style.display = (tabId === 'shopping') ? 'flex' : 'block';
   }
 
@@ -2766,9 +3027,21 @@ function switchMainTab(tabId) {
   const activeBtn = document.getElementById(`btn-main-${tabId}`);
   if (activeBtn) activeBtn.classList.add('active');
 
-  // Wenn auf den Stundenplan gewechselt wird, heutigen Wochentag aktivieren
+  // --- TAB-SPEZIFISCHE DATEN / INITIALISIERUNGEN LADEN ---
+  
+  // 1. Dashboard (Startseite) neu laden
+  if (tabId === 'home' && typeof loadDashboard === 'function') {
+    loadDashboard();
+  }
+
+  // 2. Stundenplan initialisieren
   if (tabId === 'stundenplan' && typeof initStundenplan === 'function') {
     initStundenplan();
+  }
+
+  // 3. Einkaufsliste laden
+  if (tabId === 'shopping' && typeof fetchShoppingList === 'function') {
+    fetchShoppingList();
   }
 }
 
@@ -2924,6 +3197,31 @@ function renderShoppingView(filterQuery = '') {
     }).join('');
   }
 }
+
+// Echtzeit-Synchronisation für die Einkaufsliste
+function setupRealtimeEinkaufsliste() {
+  // Verhindern, dass der Listener doppelt registriert wird
+  if (shoppingChannel) return;
+
+  shoppingChannel = db.channel('shopping-changes')
+    .on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: 'shopping_list' },
+      (payload) => {
+        console.log('Änderung empfangen:', payload);
+        if (typeof fetchShoppingList === 'function') fetchShoppingList();
+        if (typeof loadDashboard === 'function') loadDashboard();
+      }
+    )
+    .subscribe((status, err) => {
+      if (err) console.error('Realtime Fehler:', err);
+    });
+}
+
+// Beim Laden der Seite aktivieren
+document.addEventListener('DOMContentLoaded', () => {
+  setupRealtimeEinkaufsliste();
+});
 
 // 2. Live-Filter ausführen, wenn man in das fixierte Feld tippt
 function filterShoppingCatalog(value) {
@@ -4046,6 +4344,15 @@ document.addEventListener('DOMContentLoaded', () => {
   
   // Initialen Stand setzen (oder standardmäßig Montag anzeigen)
   // showDay(targetDay);
+});
+document.addEventListener('DOMContentLoaded', () => {
+  // Realtime für Einkaufsliste aktivieren (falls noch nicht drin)
+  if (typeof setupRealtimeEinkaufsliste === 'function') {
+    setupRealtimeEinkaufsliste();
+  }
+
+  // Startseite direkt aktivieren und Daten abfragen
+  switchMainTab('home');
 });
 
   </script>
