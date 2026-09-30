@@ -4679,13 +4679,6 @@ async function activatePushForSelectedUser() {
 
 // Technische Abfrage & Generierung des Push-Tokens
 async function enablePushForUser(userId) {
-
-  const existingSubscription = await registration.pushManager.getSubscription();
-if (existingSubscription) {
-  await existingSubscription.unsubscribe(); // Alte, ungültige Subscription im Browser löschen
-  console.log('Alte Subscription erfolgreich gelöscht.');
-}
-
   if (!('Notification' in window)) {
     alert('Dieser Browser unterstützt leider keine Push-Benachrichtigungen.');
     return;
@@ -4699,6 +4692,13 @@ if (existingSubscription) {
 
   try {
     const reg = await navigator.serviceWorker.ready;
+    
+    // Alte, möglicherweise mit dem alten Key verknüpfte Subscription erst hier löschen
+    const existingSubscription = await reg.pushManager.getSubscription();
+    if (existingSubscription) {
+      await existingSubscription.unsubscribe();
+      console.log('Alte Subscription erfolgreich gelöscht.');
+    }
     
     let subscription = await reg.pushManager.getSubscription();
     
