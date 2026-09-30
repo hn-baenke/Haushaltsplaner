@@ -1355,11 +1355,6 @@ body, html {
     const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
     const PUBLIC_VAPID_KEY = 'BPflA4blA_37rvzsn0QLH4pwRUWHQPlSXfRylMdbBRKGLlolKydlJ91SWZEeg4MpFqUGfTKByxRyyPmiftWT_kQ';
-    const existingSubscription = await registration.pushManager.getSubscription();
-if (existingSubscription) {
-  await existingSubscription.unsubscribe(); // Alte, ungültige Subscription im Browser löschen
-  console.log('Alte Subscription erfolgreich gelöscht.');
-}
     const days = ['Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag', 'Sonntag'];
     
     let categoriesState = [];
@@ -4684,6 +4679,13 @@ async function activatePushForSelectedUser() {
 
 // Technische Abfrage & Generierung des Push-Tokens
 async function enablePushForUser(userId) {
+
+  const existingSubscription = await registration.pushManager.getSubscription();
+if (existingSubscription) {
+  await existingSubscription.unsubscribe(); // Alte, ungültige Subscription im Browser löschen
+  console.log('Alte Subscription erfolgreich gelöscht.');
+}
+
   if (!('Notification' in window)) {
     alert('Dieser Browser unterstützt leider keine Push-Benachrichtigungen.');
     return;
