@@ -4625,38 +4625,23 @@ function getWeatherDescription(code) {
 // EINSTELLUNGEN & PUSH-BENACHRICHTIGUNGEN
 // ==========================================
 
-// 1. Service Worker registrieren (falls noch nicht geschehen)
+// 1. Service Worker registrieren
 if ('serviceWorker' in navigator && 'PushManager' in window) {
   navigator.serviceWorker.register('sw.js')
     .then(reg => console.log('Service Worker erfolgreich registriert:', reg))
     .catch(err => console.error('Service Worker Registrierungsfehler:', err));
 }
 
-// Modal Öffnen & Nutzer aus Supabase laden
-async function openSettingsModal() {
+// Modal Öffnen & angemeldeten Nutzer anzeigen
+function openSettingsModal() {
   const modal = document.getElementById('settings-modal');
-  const userSelect = document.getElementById('settings-user-select');
-  
   if (modal) modal.style.display = 'flex';
 
-  try {
-    // Hol die angelegten User (Daniel & Jasmin) aus Supabase
-    const { data: users, error } = await db.from('users').select('id, name');
-    
-    if (error) throw error;
-
-    if (userSelect) {
-      userSelect.innerHTML = users.map(user => 
-        `<option value="${user.id}">${user.name}</option>`
-      ).join('');
-      
-      // Letzten ausgewählten Nutzer aus dem LocalStorage wiederherstellen (falls vorhanden)
-      const savedUserId = localStorage.getItem('haushalt_active_user');
-      if (savedUserId) userSelect.value = savedUserId;
-    }
-  } catch (err) {
-    console.error('Fehler beim Laden der Nutzer:', err);
-    if (userSelect) userSelect.innerHTML = '<option value="">Fehler beim Laden</option>';
+  // Aktuell angemeldeten Namen im Modal anzeigen (falls Element existiert)
+  const currentUserName = localStorage.getItem('haushalt_active_user_name');
+  const userDisplay = document.getElementById("current-user-display");
+  if (userDisplay && currentUserName) {
+    userDisplay.innerText = currentUserName;
   }
 }
 
@@ -4666,18 +4651,15 @@ function closeSettingsModal() {
   if (modal) modal.style.display = 'none';
 }
 
-// Push-Aktivierung für den im Dropdown gewählten Nutzer auslösen
+// Push-Aktivierung für den bereits EINGELOGGTEN Nutzer auslösen
 async function activatePushForSelectedUser() {
-  const userSelect = document.getElementById('settings-user-select');
-  const userId = userSelect ? userSelect.value : null;
+  // Holt direkt die ID des aktuell angemeldeten Nutzers aus dem Speicher
+  const userId = localStorage.getItem('haushalt_active_user');
 
   if (!userId) {
-    alert('Bitte wähle zuerst deinen Namen aus!');
+    alert('Bitte melde dich zuerst an!');
     return;
   }
-
-  // Gewählten User im Browser speichern für künftige Sitzungen
-  localStorage.setItem('haushalt_active_user', userId);
 
   await enablePushForUser(userId);
 }
@@ -4699,19 +4681,15 @@ async function enablePushForUser(userId) {
   try {
     const reg = await navigator.serviceWorker.ready;
     
-    // Hinweis: Für die finale Übertragung über einen Push-Service (z. B. VAPID Keys)
-    // generieren wir die Subscription direkt über den Browser PushManager
     let subscription = await reg.pushManager.getSubscription();
     
     if (!subscription) {
-      // Wenn du später einen eigenen VAPID Key hast, kannst du applicationServerKey ergänzen.
-      // Für einfache Web-Pushs erzeugt getSubscription/subscribe das Token:
       subscription = await reg.pushManager.subscribe({
         userVisibleOnly: true
       });
     }
 
-    // Push-Subscription in Supabase in der Spalte push_subscription speichern
+    // Push-Subscription in Supabase für den aktiven User speichern
     const { error } = await db
       .from('users')
       .update({ push_subscription: subscription })
@@ -4719,7 +4697,7 @@ async function enablePushForUser(userId) {
 
     if (error) throw error;
 
-    alert('Super! Push-Benachrichtigungen wurden für diesen Nutzer auf diesem Gerät aktiviert. 🎉');
+    alert('Super! Push-Benachrichtigungen wurden für deinen Account auf diesem Gerät aktiviert. 🎉');
     closeSettingsModal();
   } catch (err) {
     console.error('Fehler beim Speichern der Push-Subscription:', err);
@@ -4746,7 +4724,6 @@ function openLoginModal() {
   if (errorEl) errorEl.style.display = "none";
   if (passwordInput) passwordInput.value = "";
   
-  // Falls die E-Mail schon mal eingegeben wurde
   const savedEmail = localStorage.getItem('haushalt_active_user_email');
   if (emailInput && savedEmail) emailInput.value = savedEmail;
 
@@ -4772,7 +4749,6 @@ async function handleLogin(event) {
   btnEl.innerText = "Prüfe...";
 
   try {
-    // 1. Nutzer über die E-Mail-Adresse in der 'users'-Tabelle suchen
     const { data: user, error } = await db
       .from('users')
       .select('id, name, email, password_hash')
@@ -4787,10 +4763,9 @@ async function handleLogin(event) {
       return;
     }
 
-    // Hash des eingegebenen Passworts berechnen
     const inputHash = await hashPassword(enteredPassword);
 
-    // 2. Ersteinrichtung: Wenn noch kein Passwort gesetzt ist
+    // Ersteinrichtung
     if (!user.password_hash) {
       const { error: updateError } = await db
         .from('users')
@@ -4806,7 +4781,7 @@ async function handleLogin(event) {
       return;
     }
 
-    // 3. Normaler Login: Passwörter vergleichen
+    // Normaler Login
     if (inputHash === user.password_hash) {
       localStorage.setItem('haushalt_active_user_email', user.email);
       executeLogin(user.id, user.name);
@@ -4831,27 +4806,22 @@ async function handleLogin(event) {
   }
 }
 
-// Ergänze/Passe diese Funktion an
 function executeLogin(userId, userName) {
   localStorage.setItem('haushalt_active_user', userId);
   localStorage.setItem('haushalt_active_user_name', userName);
   
-  // Zeigt den Namen in den Einstellungen an
   const userDisplay = document.getElementById("current-user-display");
   if (userDisplay) userDisplay.innerText = userName;
 
-  // Hier ggf. deine Haupt-Funktion zum Laden der Daten aufrufen (z.B. renderApp() oder loadDashboard())
   if (typeof renderApp === 'function') renderApp();
 }
 
-// Die Abmelden-Funktion
 function logoutUser() {
-  // 1. Lokalen Speicher leeren
   localStorage.removeItem('haushalt_active_user');
   localStorage.removeItem('haushalt_active_user_name');
   localStorage.removeItem('haushalt_active_user_email');
 
-  // 2. Login-Modal wieder öffnen
+  closeSettingsModal();
   openLoginModal();
 }
 
