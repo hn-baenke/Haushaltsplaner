@@ -688,20 +688,26 @@ body, html {
 </head>
 <body>
 
-<!-- Passwort-Overlay -->
-<div id="auth-overlay" style="position: fixed; inset: 0; background: #0f172a; display: flex; align-items: center; justify-content: center; z-index: 9999; padding: 20px;">
+<!-- Passwort-Overlay mit E-Mail-Login -->
+<div id="auth-overlay" style="position: fixed; inset: 0; background: #0f172a; display: none; align-items: center; justify-content: center; z-index: 9999; padding: 20px;">
   <div style="background: #ffffff; padding: 32px 24px; border-radius: 16px; max-width: 360px; width: 100%; text-align: center; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3);">
     <div style="font-size: 2.5rem; margin-bottom: 8px;">🔒</div>
-    <h2 style="margin: 0 0 8px 0; font-size: 1.25rem; color: #0f172a; font-weight: 700;">Familienplaner</h2>
-    <p style="margin: 0 0 20px 0; font-size: 0.875rem; color: #64748b;">Bitte Passwort eingeben, um fortzufahren.</p>
+    <h2 id="auth-title" style="margin: 0 0 8px 0; font-size: 1.25rem; color: #0f172a; font-weight: 700;">Anmeldung</h2>
+    <p id="auth-subtitle" style="margin: 0 0 20px 0; font-size: 0.875rem; color: #64748b;">Gib deine E-Mail-Adresse und dein Passwort ein.</p>
     
     <form onsubmit="handleLogin(event)">
+      <!-- E-Mail Feld -->
+      <input type="email" id="auth-email-input" placeholder="E-Mail-Adresse" autocomplete="email" required style="width: 100%; padding: 12px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 1rem; box-sizing: border-box; margin-bottom: 12px; text-align: center; outline: none;">
+
+      <!-- Passwort Feld -->
       <input type="password" id="auth-input" placeholder="Passwort" autocomplete="current-password" required style="width: 100%; padding: 12px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 1rem; box-sizing: border-box; margin-bottom: 12px; text-align: center; outline: none;">
+      
       <button type="submit" id="auth-btn" style="width: 100%; padding: 12px; background: #2563eb; color: white; border: none; border-radius: 8px; font-size: 1rem; font-weight: 600; cursor: pointer;">
         Anmelden
       </button>
     </form>
-    <p id="auth-error" style="color: #ef4444; font-size: 0.8rem; margin-top: 12px; display: none;">Falsches Passwort!</p>
+    
+    <p id="auth-error" style="color: #ef4444; font-size: 0.8rem; margin-top: 12px; display: none;">Falsche Anmeldedaten!</p>
   </div>
 </div>
 
@@ -1247,15 +1253,17 @@ body, html {
       <button onclick="closeSettingsModal()" style="background: none; border: none; font-size: 1.4rem; cursor: pointer; color: var(--text-muted);">&times;</button>
     </div>
 
-    <!-- User-Auswahl -->
-    <div style="margin-bottom: 20px;">
-      <label style="display: block; font-size: 0.85rem; font-weight: 600; color: var(--text-muted); margin-bottom: 6px;">
-        Wer nutzt dieses Gerät?
-      </label>
-      <select id="settings-user-select" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid var(--border); font-size: 1rem; background: var(--bg);">
-        <option value="">Lade Nutzer...</option>
-      </select>
-    </div>
+    <!-- Abmelden Button -->
+<div class="settings-card" style="background: #ffffff; padding: 16px; border-radius: 12px; margin-top: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+  <h3 style="margin-top: 0; font-size: 1rem; color: #0f172a;">Konto</h3>
+  <p style="font-size: 0.875rem; color: #64748b; margin-bottom: 12px;">
+    Angemeldet als: <strong id="current-user-display">-</strong>
+  </p>
+
+  <button onclick="logoutUser()" style="width: 100%; padding: 12px; background: #ef4444; color: white; border: none; border-radius: 8px; font-size: 1rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px;">
+    <span>🚪</span> Abmelden
+  </button>
+</div>
 
     <!-- Push Button -->
     <div style="margin-bottom: 10px;">
@@ -1294,7 +1302,8 @@ body, html {
     let pressTimer = null;
     let currentActiveDay = 'mo';
     let shoppingChannel = null;
-   
+    let currentLoginUserId = null;
+    
     // Rezept-Detailansicht Status
     let currentActiveRecipe = null;
     let currentTargetServings = 4;
@@ -1315,53 +1324,93 @@ function checkAuthOnLoad() {
   }
 }
 
-// Schickt das Passwort zur Überprüfung an Supabase
-async function handleLogin(event) {
-  event.preventDefault();
-  const inputEl = document.getElementById("auth-input");
-  const errorEl = document.getElementById("auth-error");
-  const btnEl = document.getElementById("auth-btn");
-  const overlay = document.getElementById("auth-overlay");
-
-  const enteredPassword = inputEl.value;
-  btnEl.disabled = true;
-  btnEl.innerText = "Prüfe...";
-
+async function loginUser(userId) {
   try {
-    // Ruft die SQL-Funktion in Supabase auf
-    const { data: isValid, error } = await db.rpc('check_app_password', { 
-      user_password: enteredPassword 
-    });
+    // 1. Nutzerdaten aus Supabase abrufen
+    const { data: user, error } = await db
+      .from('users')
+      .select('id, name, password_hash')
+      .eq('id', userId)
+      .single();
 
-    if (error) throw error;
+    if (error || !user) {
+      alert('Nutzer konnte nicht gefunden werden.');
+      return;
+    }
 
-    if (isValid) {
-      // Passwort korrekt -> Im Browser speichern
-      localStorage.setItem("haushaltsplaner_authenticated", "true");
-      if (overlay) overlay.style.display = "none";
-      if (errorEl) errorEl.style.display = "none";
-    } else {
-      // Passwort falsch
-      if (errorEl) {
-        errorEl.innerText = "Falsches Passwort!";
-        errorEl.style.display = "block";
+    // 2. Fall A: Nutzer hat NOCH KEIN Passwort gesetzt
+    if (!user.password_hash) {
+      const newPassword = prompt(`Willkommen ${user.name}! Bitte vergib ein Passwort für deinen Account:`);
+      if (!newPassword || newPassword.trim() === '') {
+        alert('Kein Passwort eingegeben. Login abgebrochen.');
+        return;
       }
-      inputEl.value = "";
+
+      const hashedNew = await hashPassword(newPassword.trim());
+
+      // Passwort-Hash in Supabase speichern
+      const { error: updateError } = await db
+        .from('users')
+        .update({ password_hash: hashedNew })
+        .eq('id', user.id);
+
+      if (updateError) {
+        alert('Fehler beim Speichern des Passworts!');
+        return;
+      }
+
+      alert('Passwort erfolgreich festgelegt!');
+      executeLogin(user.id, user.name);
+      return;
     }
+
+    // 3. Fall B: Passwort ist bereits vorhanden -> Passwort abfragen
+    const inputPassword = prompt(`Passwort für ${user.name}:`);
+    if (!inputPassword) return; // Abgebrochen
+
+    const inputHash = await hashPassword(inputPassword.trim());
+
+    if (inputHash === user.password_hash) {
+      executeLogin(user.id, user.name);
+    } else {
+      alert('❌ Falsches Passwort! Bitte versuche es erneut.');
+    }
+
   } catch (err) {
-    console.error("Login Fehler:", err);
-    if (errorEl) {
-      errorEl.innerText = "Fehler bei der Verbindung!";
-      errorEl.style.display = "block";
-    }
-  } finally {
-    btnEl.disabled = false;
-    btnEl.innerText = "Anmelden";
+    console.error('Fehler beim Login:', err);
+    alert('Login fehlgeschlagen.');
   }
 }
 
-// Beim Start ausführen
-document.addEventListener("DOMContentLoaded", checkAuthOnLoad);
+// Hilfsfunktion: Setzt das LocalStorage & lädt das Dashboard
+function executeLogin(userId, userName) {
+  localStorage.setItem('haushalt_active_user', userId);
+  localStorage.setItem('haushalt_active_user_name', userName);
+  
+  // Ansicht aktualisieren (je nachdem wie deine Funktion heißt)
+  if (typeof loadDashboard === 'function') loadDashboard();
+  if (typeof renderUserSelection === 'function') renderUserSelection();
+  
+  console.log(`Erfolgreich eingeloggt als ${userName}`);
+}
+
+async function resetUserPassword(userId) {
+  const newPassword = prompt('Neues Passwort eingeben:');
+  if (!newPassword || newPassword.trim() === '') return;
+
+  const newHash = await hashPassword(newPassword.trim());
+
+  const { error } = await db
+    .from('users')
+    .update({ password_hash: newHash })
+    .eq('id', userId);
+
+  if (error) {
+    alert('Fehler beim Zurücksetzen des Passworts.');
+  } else {
+    alert('Passwort erfolgreich geändert!');
+  }
+}
 
     async function loadDashboard() {
   const now = new Date();
@@ -4610,9 +4659,147 @@ async function enablePushForUser(userId) {
   }
 }
 
+// Passwort mit SHA-256 hashen
+async function hashPassword(password) {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(password);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+// Öffnet das Login-Modal
+function openLoginModal() {
+  const overlay = document.getElementById("auth-overlay");
+  const emailInput = document.getElementById("auth-email-input");
+  const passwordInput = document.getElementById("auth-input");
+  const errorEl = document.getElementById("auth-error");
+
+  if (errorEl) errorEl.style.display = "none";
+  if (passwordInput) passwordInput.value = "";
+  
+  // Falls die E-Mail schon mal eingegeben wurde
+  const savedEmail = localStorage.getItem('haushalt_active_user_email');
+  if (emailInput && savedEmail) emailInput.value = savedEmail;
+
+  if (overlay) overlay.style.display = "flex";
+}
+
+// Prüft E-Mail & Passwort
+async function handleLogin(event) {
+  event.preventDefault();
+  
+  const emailInput = document.getElementById("auth-email-input");
+  const passwordInput = document.getElementById("auth-input");
+  const errorEl = document.getElementById("auth-error");
+  const btnEl = document.getElementById("auth-btn");
+  const overlay = document.getElementById("auth-overlay");
+
+  const enteredEmail = emailInput ? emailInput.value.trim().toLowerCase() : "";
+  const enteredPassword = passwordInput ? passwordInput.value.trim() : "";
+
+  if (!enteredEmail || !enteredPassword) return;
+
+  btnEl.disabled = true;
+  btnEl.innerText = "Prüfe...";
+
+  try {
+    // 1. Nutzer über die E-Mail-Adresse in der 'users'-Tabelle suchen
+    const { data: user, error } = await db
+      .from('users')
+      .select('id, name, email, password_hash')
+      .eq('email', enteredEmail)
+      .maybeSingle();
+
+    if (error || !user) {
+      if (errorEl) {
+        errorEl.innerText = "Kein Nutzer mit dieser E-Mail gefunden!";
+        errorEl.style.display = "block";
+      }
+      return;
+    }
+
+    // Hash des eingegebenen Passworts berechnen
+    const inputHash = await hashPassword(enteredPassword);
+
+    // 2. Ersteinrichtung: Wenn noch kein Passwort gesetzt ist
+    if (!user.password_hash) {
+      const { error: updateError } = await db
+        .from('users')
+        .update({ password_hash: inputHash })
+        .eq('id', user.id);
+
+      if (updateError) throw updateError;
+
+      alert(`Willkommen ${user.name}! Dein Passwort wurde erfolgreich für ${user.email} gespeichert.`);
+      localStorage.setItem('haushalt_active_user_email', user.email);
+      executeLogin(user.id, user.name);
+      if (overlay) overlay.style.display = "none";
+      return;
+    }
+
+    // 3. Normaler Login: Passwörter vergleichen
+    if (inputHash === user.password_hash) {
+      localStorage.setItem('haushalt_active_user_email', user.email);
+      executeLogin(user.id, user.name);
+      if (overlay) overlay.style.display = "none";
+    } else {
+      if (errorEl) {
+        errorEl.innerText = "Falsches Passwort!";
+        errorEl.style.display = "block";
+      }
+      if (passwordInput) passwordInput.value = "";
+    }
+
+  } catch (err) {
+    console.error("Login Fehler:", err);
+    if (errorEl) {
+      errorEl.innerText = "Fehler bei der Anmeldung!";
+      errorEl.style.display = "block";
+    }
+  } finally {
+    btnEl.disabled = false;
+    btnEl.innerText = "Anmelden";
+  }
+}
+
+// Ergänze/Passe diese Funktion an
+function executeLogin(userId, userName) {
+  localStorage.setItem('haushalt_active_user', userId);
+  localStorage.setItem('haushalt_active_user_name', userName);
+  
+  // Zeigt den Namen in den Einstellungen an
+  const userDisplay = document.getElementById("current-user-display");
+  if (userDisplay) userDisplay.innerText = userName;
+
+  // Hier ggf. deine Haupt-Funktion zum Laden der Daten aufrufen (z.B. renderApp() oder loadDashboard())
+  if (typeof renderApp === 'function') renderApp();
+}
+
+// Die Abmelden-Funktion
+function logoutUser() {
+  // 1. Lokalen Speicher leeren
+  localStorage.removeItem('haushalt_active_user');
+  localStorage.removeItem('haushalt_active_user_name');
+  localStorage.removeItem('haushalt_active_user_email');
+
+  // 2. Login-Modal wieder öffnen
+  openLoginModal();
+}
+
 // Beim Laden der Seite auch den Stundenplan aus Supabase ziehen:
 document.addEventListener('DOMContentLoaded', () => {
   loadStundenplan();
+});
+
+// Automatische Login-Prüfung beim Laden der Seite
+document.addEventListener("DOMContentLoaded", () => {
+  const activeUser = localStorage.getItem("haushalt_active_user");
+
+  // Wenn noch kein Nutzer angemeldet ist -> Anmelde-Overlay sofort anzeigen
+  if (!activeUser) {
+    openLoginModal();
+  }
 });
 
 // Automatisch beim Laden der Seite ausführen
