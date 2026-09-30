@@ -1372,6 +1372,7 @@ body, html {
     let currentActiveDay = 'mo';
     let shoppingChannel = null;
     let currentLoginUserId = null;
+    let shoppingPushTimer = null;
     
     // Rezept-Detailansicht Status
     let currentActiveRecipe = null;
@@ -3225,29 +3226,25 @@ function switchMainTab(tabId) {
 // ==========================================
 // PUSH-BENACHRICHTIGUNGEN & TIMER LOGIK
 // ==========================================
-let shoppingPushTimer = null;
 
-// Hilfsfunktion: Triggered eine Nachricht an den Partner (alle anderen registrierten User)
+// Hilfsfunktion: Triggered eine Nachricht an den Partner über die Edge Function
 async function sendPushToPartner(title, message) {
   const currentUserId = localStorage.getItem('haushalt_active_user');
   if (!currentUserId) return;
 
   try {
-    const { data: partners, error } = await db
-      .from('users')
-      .select('name, push_subscription')
-      .neq('id', currentUserId)
-      .not('push_subscription', 'is', null);
-
-    if (error) throw error;
-
-    partners.forEach(partner => {
-      if (partner.push_subscription) {
-        console.log(`Push gesendet an ${partner.name}: ${title} - ${message}`);
+    const { data, error } = await db.functions.invoke('send-push', {
+      body: {
+        senderId: currentUserId,
+        title: title,
+        message: message
       }
     });
+
+    if (error) throw error;
+    console.log('Push-Mitteilung erfolgreich an Supabase Edge Function übergeben!');
   } catch (err) {
-    console.error('Fehler beim Senden der Push-Nachricht:', err);
+    console.error('Fehler beim Auslösen der Push-Nachricht:', err);
   }
 }
 
