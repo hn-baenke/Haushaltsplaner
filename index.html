@@ -4652,9 +4652,24 @@ function closeSettingsModal() {
   if (modal) modal.style.display = 'none';
 }
 
+// Hilfsfunktion: Konvertiert den Base64 VAPID-Key in ein Uint8Array für den Browser
+function urlBase64ToUint8Array(base64String) {
+  const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding)
+    .replace(/\-/g, '+')
+    .replace(/_/g, '/');
+
+  const rawData = window.atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+
+  for (let i = 0; i < rawData.length; ++i) {
+    outputArray[i] = rawData.charCodeAt(i);
+  }
+  return outputArray;
+}
+
 // Push-Aktivierung für den bereits EINGELOGGTEN Nutzer auslösen
 async function activatePushForSelectedUser() {
-  // Holt direkt die ID des aktuell angemeldeten Nutzers aus dem Speicher
   const userId = localStorage.getItem('haushalt_active_user');
 
   if (!userId) {
@@ -4672,7 +4687,6 @@ async function enablePushForUser(userId) {
     return;
   }
 
-  // Erlaubnis beim Betriebssystem/Browser anfragen
   const permission = await Notification.requestPermission();
   if (permission !== 'granted') {
     alert('Benachrichtigungen wurden im Browser nicht erlaubt.');
@@ -4686,7 +4700,8 @@ async function enablePushForUser(userId) {
     
     if (!subscription) {
       subscription = await reg.pushManager.subscribe({
-        userVisibleOnly: true
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(PUBLIC_VAPID_KEY)
       });
     }
 
@@ -4825,6 +4840,7 @@ function logoutUser() {
   closeSettingsModal();
   openLoginModal();
 }
+
 
 // Beim Laden der Seite auch den Stundenplan aus Supabase ziehen:
 document.addEventListener('DOMContentLoaded', () => {
