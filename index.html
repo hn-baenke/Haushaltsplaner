@@ -1445,15 +1445,16 @@ body, html {
 
     </div>
 
-    <!-- Push Berechtigung Hauptbutton -->
-    <div style="margin-bottom: 10px;">
+    <!-- Push Berechtigung Hauptbutton (Standardmäßig unsichtbar bis JS prüft) -->
+    <div id="push-permission-container" style="margin-bottom: 10px; display: none;">
       <button onclick="activatePushForSelectedUser()" 
               style="width: 100%; padding: 12px; background: #2563eb; color: white; border: none; border-radius: 10px; font-weight: 600; font-size: 0.95rem; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: background 0.15s ease;">
         🔔 Browser-Push Berechtigung erteilen
       </button>
     </div>
 
-    <p style="font-size: 0.75rem; color: var(--text-muted, #64748b); text-align: center; margin-top: 12px; line-height: 1.4; margin-bottom: 0;">
+    <!-- Status-Text mit ID -->
+    <p id="push-status-text" style="font-size: 0.75rem; color: var(--text-muted, #64748b); text-align: center; margin-top: 12px; line-height: 1.4; margin-bottom: 0;">
       Erlaube Push-Benachrichtigungen im Browser, um Mitteilungen direkt auf deinen Geräten zu erhalten.
     </p>
 
@@ -4789,6 +4790,9 @@ async function openSettingsModal() {
 
   // Gespeicherte Benachrichtigungseinstellungen aus Supabase laden
   await loadNotificationSettings();
+
+  // Prüfen, ob der Berechtigungs-Button ausgeblendet werden kann
+  await checkAndTogglePushButton();
 }
 
 // Modal Schließen
@@ -4852,23 +4856,24 @@ async function enablePushForUser(userId) {
       applicationServerKey: urlBase64ToUint8Array(PUBLIC_VAPID_KEY)
     });
 
-    // WICHTIG: Subscription in einen String umwandeln für Supabase (JSONB oder TEXT Spalte)
+    // WICHTIG: Subscription in ein Objekt umwandeln für Supabase
     const subscriptionData = JSON.parse(JSON.stringify(subscription));
 
-    // Push-Subscription & Schalter direkt beim Aktivieren mit auf true setzen
+    // Push-Subscription in Supabase speichern (korrekter Spaltenname: push_subscription)
     const { error } = await db
       .from('users')
       .update({ 
-        push_subs: subscriptionData, // Passe den Spaltennamen an (z.B. push_subs oder push_subscription)
-        notif_shopping: true         // Beispiel: Direkt als aktiv markieren oder so belassen
+        push_subscription: subscriptionData, 
+        notif_shopping: true 
       })
-      .eq('id', userId); // Oder .eq('email', userEmail) je nachdem was du übergibst
+      .eq('id', userId);
 
     if (error) throw error;
 
     alert('Super! Push-Benachrichtigungen wurden für deinen Account auf diesem Gerät aktiviert. 🎉');
     
-    // UI-Elemente aktualisieren falls nötig
+    // Button direkt ausblenden
+    await checkAndTogglePushButton();
     closeSettingsModal();
   } catch (err) {
     console.error('Fehler beim Speichern der Push-Subscription:', err);
@@ -4887,36 +4892,78 @@ function toggleTimeVisibility(type) {
 
 // Einstellungen direkt in die Supabase 'users'-Tabelle schreiben
 async function saveNotificationSettings() {
-  const currentUserName = document.getElementById('current-user-display').textContent.trim();
+  const userDisplay = document.getElementById('current-user-display');
+  if (!userDisplay) return;
+  const currentUserName = userDisplay.textContent.trim();
   if (!currentUserName || currentUserName === '-') return;
 
+  const notifShopping = document.getElementById('notif-shopping').checked;
+  const notifDinner = document.getElementById('notif-dinner').checked;
+  const notifTodoUpcoming = document.getElementById('notif-todo-upcoming').checked;
+  const notifTodoDaily = document.getElementById('notif-todo-daily').checked;
+  const notifSchedule = document.getElementById('notif-schedule').checked;
+
   const settings = {
-    notif_shopping: document.getElementById('notif-shopping').checked,
-    notif_dinner: document.getElementById('notif-dinner').checked,
+    notif_shopping: notifShopping,
+    notif_dinner: notifDinner,
     notif_dinner_time: document.getElementById('notif-dinner-time').value,
-    notif_todo_upcoming: document.getElementById('notif-todo-upcoming').checked,
-    notif_todo_daily: document.getElementById('notif-todo-daily').checked,
-    notif_schedule: document.getElementById('notif-schedule').checked,
+    notif_todo_upcoming: notifTodoUpcoming,
+    notif_todo_daily: notifTodoDaily,
+    notif_schedule: notifSchedule,
     notif_schedule_time: document.getElementById('notif-schedule-time').value
   };
+
+  // Prüfen, ob ALLE Schalter auf aus (false) stehen
+  const allOff = !notifShopping && !notifDinner && !notifTodoUpcoming && !notifTodoDaily && !notifSchedule;
+
+  if (allOff) {
+    // Wenn alles aus ist, Push-Subscription im Browser komplett aufheben
+    if ('serviceWorker' in navigator && 'PushManager' in window) {
+      try {
+        const reg = await navigator.serviceWorker.ready;
+        const subscription = await reg.pushManager.getSubscription();
+        if (subscription) {
+          await subscription.unsubscribe();
+        }
+      } catch (err) {
+        console.error("Fehler beim Aufheben der Subscription:", err);
+      }
+    }
+    // In der Datenbank ebenfalls löschen
+    settings.push_subscription = null;
+
+    // UI SOFORT direkt zurücksetzen, damit der Button und Text wieder da sind
+    const container = document.getElementById('push-permission-container');
+    const statusText = document.getElementById('push-status-text');
+    if (container) container.style.display = 'block';
+    if (statusText) {
+      statusText.innerText = "Erlaube Push-Benachrichtigungen im Browser, um Mitteilungen direkt auf deinen Geräten zu erhalten.";
+      statusText.style.color = "var(--text-muted, #64748b)";
+    }
+  }
 
   const { error } = await db
     .from('users')
     .update(settings)
-    .eq('name', currentUserName); // Hier nach 'name' statt 'email' filtern!
+    .eq('name', currentUserName);
 
   if (error) {
     console.error('Fehler beim Speichern der Benachrichtigungseinstellungen:', error);
   } else {
     console.log('Einstellungen erfolgreich gespeichert!');
+    // Zusätzlicher Check, falls nicht alles aus war
+    if (!allOff) {
+      checkAndTogglePushButton();
+    }
   }
 }
 
 async function loadNotificationSettings() {
-  const currentUserName = document.getElementById('current-user-display').textContent.trim();
+  const userDisplay = document.getElementById('current-user-display');
+  if (!userDisplay) return;
+  const currentUserName = userDisplay.textContent.trim();
   if (!currentUserName || currentUserName === '-') return;
 
-  // Verwende .eq('name', ...) und .maybeSingle() (verhindert den Absturz, falls 0 Zeilen da sind)
   const { data, error } = await db
     .from('users')
     .select('notif_shopping, notif_dinner, notif_dinner_time, notif_todo_upcoming, notif_todo_daily, notif_schedule, notif_schedule_time')
@@ -4928,7 +4975,6 @@ async function loadNotificationSettings() {
     return;
   }
 
-  // Falls noch gar kein Datensatz für diesen Nutzer existiert, abbrechen
   if (!data) {
     console.log('Noch keine Einstellungen in der DB für diesen Nutzer gefunden.');
     return;
@@ -4953,6 +4999,54 @@ async function loadNotificationSettings() {
   toggleTimeVisibility('dinner');
   toggleTimeVisibility('schedule');
 }
+
+// Prüft, ob eine aktive Push-Subscription existiert UND mindestens ein Schalter an ist
+async function checkAndTogglePushButton() {
+  const container = document.getElementById('push-permission-container');
+  const statusText = document.getElementById('push-status-text');
+  if (!container) return;
+
+  // Prüfen, ob aktuell mindestens ein Schalter auf AN steht
+  const notifShopping = document.getElementById('notif-shopping')?.checked || false;
+  const notifDinner = document.getElementById('notif-dinner')?.checked || false;
+  const notifTodoUpcoming = document.getElementById('notif-todo-upcoming')?.checked || false;
+  const notifTodoDaily = document.getElementById('notif-todo-daily')?.checked || false;
+  const notifSchedule = document.getElementById('notif-schedule')?.checked || false;
+  
+  const anySwitchOn = notifShopping || notifDinner || notifTodoUpcoming || notifTodoDaily || notifSchedule;
+
+  if ('serviceWorker' in navigator && 'PushManager' in window) {
+    try {
+      const registration = await navigator.serviceWorker.ready;
+      const subscription = await registration.pushManager.getSubscription();
+      
+      // Nur wenn eine Subscription da UND mindestens ein Schalter an ist, ist es "aktiv"
+      if (subscription && anySwitchOn) {
+        container.style.display = 'none';
+        if (statusText) {
+          statusText.innerText = "Push-Benachrichtigungen sind auf diesem Gerät aktiv ✅";
+          statusText.style.color = "#16a34a";
+        }
+      } else {
+        // Ansonsten Button und Standardtext anzeigen
+        container.style.display = 'block';
+        if (statusText) {
+          statusText.innerText = "Erlaube Push-Benachrichtigungen im Browser, um Mitteilungen direkt auf deinen Geräten zu erhalten.";
+          statusText.style.color = "var(--text-muted, #64748b)";
+        }
+      }
+    } catch (err) {
+      console.error("Fehler beim Prüfen der Subscription:", err);
+      container.style.display = 'block';
+    }
+  } else {
+    container.style.display = 'none';
+    if (statusText) statusText.style.display = 'none';
+  }
+}
+
+// Beim Seitenstart einmal prüfen
+checkAndTogglePushButton();
 
 // Passwort mit SHA-256 hashen
 async function hashPassword(password) {
