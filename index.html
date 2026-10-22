@@ -883,31 +883,17 @@ body, html {
 
 <!-- TAB 1: TO-DOS -->
 <section id="todos" class="tab-content" style="display: none;">
-  <div class="card">
-    <h3 style="margin-bottom: 10px;">Neue Aufgabe</h3>
-    <form class="todo-form" onsubmit="addTodo(event)">
-      <input type="text" id="todo-text" placeholder="Was muss erledigt werden?" required style="margin: 0;">
-      <select id="todo-cat" style="margin: 0;">
-        <option value="Haushalt">Haushalt</option>
-        <option value="Einkauf">Einkauf</option>
-        <option value="Erledigung">Erledigung</option>
-        <option value="Sonstiges">Sonstiges</option>
-      </select>
-      <select id="todo-interval" class="form-select">
-        <option value="">Einmalige Aufgabe</option>
-        <option value="weekly">Jede Woche</option>
-        <option value="biweekly">Alle 2 Wochen</option>
-        <option value="monthly">Monatlich (am 1.)</option>
-      </select>
-      <!-- Datum / Frist (Optional) -->
-      <div style="margin-top: 8px;">
-        <label for="todo-due-date" style="font-size: 0.75rem; color: var(--text-muted); display: block; margin-bottom: 2px;">Fällig bis (optional):</label>
-        <input type="date" id="todo-due-date" class="form-control" style="width: 100%;">
-      </div>
-      <button type="submit" class="btn">Hinzufügen</button>
-    </form>
+  
+  <!-- Kopfbereich mit Button zum Öffnen des Modals -->
+  <div class="card" style="display: flex; justify-content: space-between; align-items: center;">
+    <div>
+      <h3 style="margin: 0;">Aufgaben-Übersicht</h3>
+      <p style="font-size: 0.85rem; color: var(--text-muted); margin: 2px 0 0 0;">Verwalte deine anstehenden Aufgaben</p>
+    </div>
+    <button class="btn" onclick="openTaskModal()">+ Neue Aufgabe</button>
   </div>
 
+  <!-- Offene Aufgaben Liste -->
   <div class="card">
     <div class="actions-bar">
       <h3>Offene Aufgaben</h3>
@@ -917,7 +903,56 @@ body, html {
       <li class="loading">Lade To-Dos...</li>
     </ul>
   </div>
+
 </section>
+
+<!-- DAS MODAL / OVERLAY (Versteckt im Hintergrund) -->
+<div id="taskModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center;">
+  <div class="card" style="width: 90%; max-width: 450px; background: white; margin: auto; position: relative; box-shadow: 0 4px 20px rgba(0,0,0,0.15);">
+    
+    <!-- Schließen-Kreuz -->
+    <button onclick="closeTaskModal()" style="position: absolute; top: 15px; right: 15px; background: none; border: none; font-size: 1.2rem; cursor: pointer; color: var(--text-muted);">&times;</button>
+
+    <h3 style="margin-bottom: 15px;">Neue Aufgabe erstellen</h3>
+    
+    <form class="todo-form" onsubmit="addTodo(event); closeTaskModal();">
+      <input type="text" id="todo-text" placeholder="Was muss erledigt werden?" required style="margin-bottom: 10px; width: 100%;">
+      
+      <select id="todo-cat" style="margin-bottom: 10px; width: 100%;">
+        <option value="Haushalt">Haushalt</option>
+        <option value="Einkauf">Einkauf</option>
+        <option value="Erledigung">Erledigung</option>
+        <option value="Sonstiges">Sonstiges</option>
+      </select>
+
+      <!-- Datum der ersten Ausführung -->
+      <div style="margin-bottom: 10px;">
+        <label for="todo-due-date" style="font-size: 0.75rem; color: var(--text-muted); display: block; margin-bottom: 2px;">Datum der ersten Ausführung / Fällig am:</label>
+        <input type="date" id="todo-due-date" class="form-control" style="width: 100%;" required>
+      </div>
+
+      <!-- Flexibles Intervall -->
+      <div style="margin-bottom: 15px;">
+        <label style="font-size: 0.75rem; color: var(--text-muted); display: block; margin-bottom: 2px;">Wiederholung (Intervall):</label>
+        <div style="display: flex; gap: 8px;">
+          <input type="number" id="todo-interval-value" min="1" value="1" placeholder="Anzahl" style="width: 80px; margin: 0;">
+          <select id="todo-interval-unit" class="form-select" style="flex: 1; margin: 0;">
+            <option value="none">Einmalige Aufgabe</option>
+            <option value="days">Tag(e)</option>
+            <option value="weeks">Woche(n)</option>
+            <option value="months">Monat(e)</option>
+            <option value="years">Jahr(e)</option>
+          </select>
+        </div>
+      </div>
+
+      <div style="display: flex; gap: 10px; justify-content: flex-end;">
+        <button type="button" class="btn btn-secondary" onclick="closeTaskModal()">Abbrechen</button>
+        <button type="submit" class="btn">Speichern</button>
+      </div>
+    </form>
+  </div>
+</div>
 
 <!-- TAB 2: ESSENSPLAN (Jetzt standardmäßig ausgeblendet) -->
 <section id="essensplan" class="tab-content" style="display: none;">
@@ -1313,36 +1348,113 @@ body, html {
 </div>
 
 <!-- EINSTELLUNGEN MODAL -->
-<div id="settings-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center; padding: 16px; box-sizing: border-border-box;">
-  <div style="background: var(--bg-secondary, #ffffff); border-radius: 16px; padding: 24px; max-width: 400px; width: 100%; box-shadow: 0 10px 25px rgba(0,0,0,0.2); position: relative;">
+<div id="settings-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center; padding: 16px; box-sizing: border-box;">
+  <div style="background: var(--bg-secondary, #ffffff); border-radius: 16px; padding: 24px; max-width: 450px; width: 100%; max-height: 90vh; overflow-y: auto; box-shadow: 0 10px 25px rgba(0,0,0,0.2); position: relative;">
     
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-      <h2 style="font-size: 1.2rem; font-weight: 700; margin: 0; color: var(--text);">⚙️ Einstellungen</h2>
-      <button onclick="closeSettingsModal()" style="background: none; border: none; font-size: 1.4rem; cursor: pointer; color: var(--text-muted);">&times;</button>
+      <h2 style="font-size: 1.2rem; font-weight: 700; margin: 0; color: var(--text, #0f172a);">⚙️ Einstellungen</h2>
+      <button onclick="closeSettingsModal()" style="background: none; border: none; font-size: 1.4rem; cursor: pointer; color: var(--text-muted, #64748b);">&times;</button>
     </div>
 
-    <!-- Abmelden Button -->
-<div class="settings-card" style="background: #ffffff; padding: 16px; border-radius: 12px; margin-top: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
-  <h3 style="margin-top: 0; font-size: 1rem; color: #0f172a;">Konto</h3>
-  <p style="font-size: 0.875rem; color: #64748b; margin-bottom: 12px;">
-    Angemeldet als: <strong id="current-user-display">-</strong>
-  </p>
-
-  <button onclick="logoutUser()" style="width: 100%; padding: 12px; background: #ef4444; color: white; border: none; border-radius: 8px; font-size: 1rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px;">
-    <span>🚪</span> Abmelden
-  </button>
-</div>
-
-    <!-- Push Button -->
-    <div style="margin-bottom: 10px;">
-      <button onclick="activatePushForSelectedUser()" 
-              style="width: 100%; padding: 12px; background: #2563eb; color: white; border: none; border-radius: 10px; font-weight: 600; font-size: 0.95rem; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: background 0.15s ease;">
-        🔔 Push-Mitteilungen aktivieren
+    <!-- Konto Karte -->
+    <div style="background: #f8fafc; padding: 16px; border-radius: 12px; margin-bottom: 16px; border: 1px solid #e2e8f0;">
+      <h3 style="margin-top: 0; font-size: 1rem; color: #0f172a; margin-bottom: 8px;">Konto</h3>
+      <p style="font-size: 0.875rem; color: #64748b; margin-bottom: 12px;">
+        Angemeldet als: <strong id="current-user-display">-</strong>
+      </p>
+      <button onclick="logoutUser()" style="width: 100%; padding: 10px; background: #ef4444; color: white; border: none; border-radius: 8px; font-size: 0.95rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px;">
+        <span>🚪</span> Abmelden
       </button>
     </div>
 
-    <p style="font-size: 0.75rem; color: var(--text-muted); text-align: center; margin-top: 12px; line-height: 1.4;">
-      Erlaube Push-Benachrichtigungen im Browser, um Mitteilungen direkt auf dem Sperrbildschirm deines Handys zu erhalten.
+    <!-- BENACHRICHTIGUNGEN EINSTELLUNGEN -->
+    <div style="background: #f8fafc; padding: 16px; border-radius: 12px; margin-bottom: 16px; border: 1px solid #e2e8f0;">
+      <h3 style="margin-top: 0; font-size: 1rem; color: #0f172a; margin-bottom: 12px;">🔔 Benachrichtigungen</h3>
+
+      <!-- CSS für Schiebeschalter (Switch) -->
+      <style>
+        .notif-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid #e2e8f0; }
+        .notif-row-sub { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; padding-left: 8px; }
+        .switch { position: relative; display: inline-block; width: 44px; height: 24px; flex-shrink: 0; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #cbd5e1; transition: .3s; border-radius: 24px; }
+        .slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px; background-color: white; transition: .3s; border-radius: 50%; }
+        .switch input:checked + .slider { background-color: #2563eb; }
+        .switch input:checked + .slider:before { transform: translateX(20px); }
+      </style>
+
+      <!-- 1. Einkaufsliste -->
+      <div class="notif-row">
+        <span style="font-size: 0.9rem; color: #334155;">Einkaufsliste</span>
+        <label class="switch">
+          <input type="checkbox" id="notif-shopping" onchange="saveNotificationSettings()">
+          <span class="slider"></span>
+        </label>
+      </div>
+
+      <!-- 2. Heutiges Abendessen (mit Uhrzeit) -->
+      <div style="margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid #e2e8f0;">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <span style="font-size: 0.9rem; color: #334155;">Heutiges Abendessen</span>
+          <label class="switch">
+            <input type="checkbox" id="notif-dinner" onchange="toggleTimeVisibility('dinner'); saveNotificationSettings();">
+            <span class="slider"></span>
+          </label>
+        </div>
+        <div id="time-container-dinner" style="display: none; margin-top: 8px; padding-left: 8px;">
+          <label style="font-size: 0.75rem; color: #64748b; display: block; margin-bottom: 2px;">Uhrzeit:</label>
+          <input type="time" id="notif-dinner-time" value="17:00" onchange="saveNotificationSettings()" style="padding: 6px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.85rem; width: 130px;">
+        </div>
+      </div>
+
+      <!-- 3. Todos -->
+      <div style="margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid #e2e8f0;">
+        <div style="font-weight: 600; font-size: 0.85rem; color: #64748b; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px;">Todos</div>
+        
+        <div class="notif-row-sub">
+          <span style="font-size: 0.85rem; color: #334155;">Bevorstehende Aufgaben (1 Tag vorher)</span>
+          <label class="switch">
+            <input type="checkbox" id="notif-todo-upcoming" onchange="saveNotificationSettings()">
+            <span class="slider"></span>
+          </label>
+        </div>
+
+        <div class="notif-row-sub" style="margin-bottom: 0;">
+          <span style="font-size: 0.85rem; color: #334155;">Aufgaben-Erinnerung (Täglich bei Nicht-Erledigung)</span>
+          <label class="switch">
+            <input type="checkbox" id="notif-todo-daily" onchange="saveNotificationSettings()">
+            <span class="slider"></span>
+          </label>
+        </div>
+      </div>
+
+      <!-- 4. Stundenplan (mit Uhrzeit) -->
+      <div style="margin-bottom: 4px;">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <span style="font-size: 0.9rem; color: #334155;">Heutiger Stundenplan</span>
+          <label class="switch">
+            <input type="checkbox" id="notif-schedule" onchange="toggleTimeVisibility('schedule'); saveNotificationSettings();">
+            <span class="slider"></span>
+          </label>
+        </div>
+        <div id="time-container-schedule" style="display: none; margin-top: 8px; padding-left: 8px;">
+          <label style="font-size: 0.75rem; color: #64748b; display: block; margin-bottom: 2px;">Uhrzeit:</label>
+          <input type="time" id="notif-schedule-time" value="07:00" onchange="saveNotificationSettings()" style="padding: 6px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.85rem; width: 130px;">
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Push Berechtigung Hauptbutton -->
+    <div style="margin-bottom: 10px;">
+      <button onclick="activatePushForSelectedUser()" 
+              style="width: 100%; padding: 12px; background: #2563eb; color: white; border: none; border-radius: 10px; font-weight: 600; font-size: 0.95rem; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: background 0.15s ease;">
+        🔔 Browser-Push Berechtigung erteilen
+      </button>
+    </div>
+
+    <p style="font-size: 0.75rem; color: var(--text-muted, #64748b); text-align: center; margin-top: 12px; line-height: 1.4; margin-bottom: 0;">
+      Erlaube Push-Benachrichtigungen im Browser, um Mitteilungen direkt auf deinen Geräten zu erhalten.
     </p>
 
   </div>
@@ -1674,13 +1786,13 @@ async function resetUserPassword(userId) {
     }
 
     // --- TO-DOS ---
-    async function fetchTodos() {
-      const { data, error } = await db.from('todos').select('*').order('created_at', { ascending: true });
-      if (error) { console.error(error); return; }
-      renderTodos(data);
-    }
+async function fetchTodos() {
+  const { data, error } = await db.from('todos').select('*').order('created_at', { ascending: true });
+  if (error) { console.error(error); return; }
+  renderTodos(data);
+}
 
-    function renderTodos(todos) {
+function renderTodos(todos) {
   const list = document.getElementById('todo-list');
   if (!list) return;
 
@@ -1699,7 +1811,9 @@ async function resetUserPassword(userId) {
 
   todos.forEach(t => {
     const isDone = Boolean(t.is_done);
-    const isFutureInterval = t.interval && t.due_date && t.due_date > todayStr && !isDone;
+    // Eine Intervall-Aufgabe ist in der Zukunft, wenn sie ein Intervall hat, ein Fälligkeitsdatum in der Zukunft liegt und sie nicht als "erledigt" markiert ist
+    const hasInterval = t.interval_unit && t.interval_unit !== 'none';
+    const isFutureInterval = hasInterval && t.due_date && t.due_date > todayStr && !isDone;
 
     if (isFutureInterval) {
       futureIntervalTodos.push(t);
@@ -1714,6 +1828,7 @@ async function resetUserPassword(userId) {
     const safeText = t.text || 'Unbenannte Aufgabe';
     const safeCategory = t.category || 'Sonstiges';
     const isDone = Boolean(t.is_done);
+    const hasInterval = t.interval_unit && t.interval_unit !== 'none';
 
     // Tage-Berechnung
     let daysDiffText = '';
@@ -1732,15 +1847,13 @@ async function resetUserPassword(userId) {
     }
 
     // 🎨 STYLING FÜR DIE GESAMTE ZEILE
-    let rowStyle = 'background: #ffffff; border: 1px solid #e2e8f0;'; // Standard Weiß
+    let rowStyle = 'background: #ffffff; border: 1px solid #e2e8f0;';
 
     if (!isDone && !isFutureInterval && diffDays !== null) {
       if (diffDays <= 3) {
-        // Rot: In 3 Tagen oder weniger (oder überfällig)
-        rowStyle = 'background: #fef2f2; border: 1px solid #fca5a5;';
+        rowStyle = 'background: #fef2f2; border: 1px solid #fca5a5;'; // Rot
       } else if (diffDays <= 7) {
-        // Gelb/Orange: In 4 bis 7 Tagen
-        rowStyle = 'background: #fffbeb; border: 1px solid #fcd34d;';
+        rowStyle = 'background: #fffbeb; border: 1px solid #fcd34d;'; // Gelb/Orange
       }
     }
 
@@ -1748,21 +1861,22 @@ async function resetUserPassword(userId) {
       rowStyle += ' opacity: 0.6; filter: grayscale(30%);';
     }
 
-    // 🔄 Intervall-Badge
+    // 🔄 Flexibles Intervall-Badge
     let intervalBadge = '';
-    if (t.interval) {
-      let intervalText = 'Wiederkehrend';
-      if (t.interval === 'weekly') intervalText = 'Wöchentlich';
-      if (t.interval === 'biweekly') intervalText = 'Alle 2 W.';
-      if (t.interval === 'monthly') intervalText = 'Monatlich';
+    if (hasInterval) {
+      let unitName = 'Tage';
+      if (t.interval_unit === 'weeks') unitName = 'Woche(n)';
+      if (t.interval_unit === 'months') unitName = 'Monat(e)';
+      if (t.interval_unit === 'years') unitName = 'Jahr(e)';
 
+      const intervalText = `Alle ${t.interval_value || 1} ${unitName}`;
       let nextDateInfo = daysDiffText ? ` (${daysDiffText})` : '';
       intervalBadge = `<span class="todo-tag" style="background: #e0f2fe; color: #0369a1; border-color: #bae6fd; white-space: nowrap;">🔄 ${intervalText}${nextDateInfo}</span>`;
     }
 
-    // 📅 Fälligkeits-Badge (dezent, da die gesamte Zeile bereits die Dringlichkeitsfarbe hat)
+    // 📅 Fälligkeits-Badge
     let dueDateBadge = '';
-    if (t.due_date && !t.interval) {
+    if (t.due_date && !hasInterval) {
       dueDateBadge = `<span class="todo-tag" style="background: rgba(255,255,255,0.7); color: #334155; border-color: #cbd5e1; white-space: nowrap;">📅 ${daysDiffText}</span>`;
     }
 
@@ -1783,7 +1897,6 @@ async function resetUserPassword(userId) {
   // 2. HTML zusammenbauen
   let html = activeTodos.map(t => createTodoHTML(t, false)).join('');
 
-  // Bereich 1: Zukünftige Intervall-Aufgaben
   if (futureIntervalTodos.length > 0) {
     html += `
       <li style="list-style: none; padding: 12px 0 4px 0; margin-top: 12px; border-top: 2px dashed #bae6fd; font-weight: 600; font-size: 0.8rem; color: #0369a1;">
@@ -1793,7 +1906,6 @@ async function resetUserPassword(userId) {
     html += futureIntervalTodos.map(t => createTodoHTML(t, true)).join('');
   }
 
-  // Bereich 2: Erledigte Aufgaben
   if (completedTodos.length > 0) {
     html += `
       <li style="list-style: none; padding: 12px 0 4px 0; margin-top: 12px; border-top: 2px dashed #cbd5e1; font-weight: 600; font-size: 0.8rem; color: var(--text-muted);">
@@ -1806,42 +1918,62 @@ async function resetUserPassword(userId) {
   list.innerHTML = html;
 }
 
-    async function addTodo(event) {
-  // 1. Verhindert das automatische Neuladen der Seite durch das Formular
+// Modal Steuerung
+function openTaskModal() {
+  const modal = document.getElementById('taskModal');
+  modal.style.display = 'flex';
+  
+  const today = new Date().toISOString().split('T')[0];
+  const dateInput = document.getElementById('todo-due-date');
+  if (dateInput && !dateInput.value) {
+    dateInput.value = today;
+  }
+}
+
+function closeTaskModal() {
+  const modal = document.getElementById('taskModal');
+  modal.style.display = 'none';
+}
+
+window.onclick = function(event) {
+  const modal = document.getElementById('taskModal');
+  if (event.target === modal) {
+    closeTaskModal();
+  }
+}
+
+// Neue Aufgabe hinzufügen
+async function addTodo(event) {
   if (event) event.preventDefault();
 
-  // 2. Elemente mit den EXAKTEN IDs aus deinem HTML auslesen
   const textInput = document.getElementById('todo-text');
   const catSelect = document.getElementById('todo-cat');
-  const intervalSelect = document.getElementById('todo-interval');
   const dueDateInput = document.getElementById('todo-due-date');
+  const intervalValInput = document.getElementById('todo-interval-value');
+  const intervalUnitSelect = document.getElementById('todo-interval-unit');
 
-  if (!textInput) {
-    console.error('Eingabefeld #todo-text wurde nicht gefunden!');
-    return;
-  }
+  if (!textInput) return;
 
   const text = textInput.value.trim();
   if (!text) return;
 
-  // Werte auslesen
   const category = catSelect ? catSelect.value : 'Haushalt';
-  const interval = (intervalSelect && intervalSelect.value) ? intervalSelect.value : null;
-  const dueDate = (dueDateInput && dueDateInput.value) ? dueDateInput.value : null;
+  const dueDate = (dueDateInput && dueDateInput.value) ? dueDateInput.value : new Date().toISOString().split('T')[0];
+  
+  const intervalValue = intervalValInput ? parseInt(intervalValInput.value, 10) || 1 : 1;
+  const intervalUnit = (intervalUnitSelect && intervalUnitSelect.value) ? intervalUnitSelect.value : 'none';
 
-  // 3. Objekt für Supabase aufbauen
   const newTodo = {
     text: text,
     category: category,
-    interval: interval,
     due_date: dueDate,
+    first_execution_date: dueDate, // Das Startdatum festhalten
+    interval_value: intervalUnit === 'none' ? null : intervalValue,
+    interval_unit: intervalUnit === 'none' ? null : intervalUnit,
     is_done: false
   };
 
-  // 4. In Supabase speichern
-  const { data, error } = await db
-    .from('todos')
-    .insert([newTodo]);
+  const { error } = await db.from('todos').insert([newTodo]);
 
   if (error) {
     console.error('Supabase Fehler:', error);
@@ -1849,19 +1981,44 @@ async function resetUserPassword(userId) {
     return;
   }
 
-  // 5. Eingabefelder nach Erfolg zurücksetzen
+  // Felder zurücksetzen
   textInput.value = '';
-  if (intervalSelect) intervalSelect.value = '';
+  if (intervalValInput) intervalValInput.value = '1';
+  if (intervalUnitSelect) intervalUnitSelect.value = 'none';
   if (dueDateInput) dueDateInput.value = '';
 
-  // 6. Liste neu aus der Datenbank laden
   fetchTodos();
 }
 
-    async function toggleTodo(id, currentStatus) {
+// Hilfsfunktion zur flexiblen Datumsberechnung
+function calculateNextDueDate(currentDateStr, value, unit) {
+  const date = new Date(currentDateStr);
+  const num = parseInt(value, 10) || 1;
+
+  switch (unit) {
+    case 'days':
+      date.setDate(date.getDate() + num);
+      break;
+    case 'weeks':
+      date.setDate(date.getDate() + (num * 7));
+      break;
+    case 'months':
+      date.setMonth(date.getMonth() + num);
+      break;
+    case 'years':
+      date.setFullYear(date.getFullYear() + num);
+      break;
+    default:
+      return null;
+  }
+
+  return date.toISOString().split('T')[0];
+}
+
+// Aufgabe abhaken / Status wechseln
+async function toggleTodo(id, currentStatus) {
   const nextStatus = !currentStatus;
 
-  // 1. Wenn die Aufgabe abgehakt wird, erst die Spieldaten aus Supabase holen (um das Intervall zu prüfen)
   const { data: todo, error: fetchError } = await db
     .from('todos')
     .select('*')
@@ -1873,30 +2030,18 @@ async function resetUserPassword(userId) {
     return;
   }
 
-  // 2. Prüfen, ob es sich um eine Intervall-Aufgabe handelt und sie gerade abgehakt wird
-  if (nextStatus === true && todo.interval) {
-    let nextDueDate = new Date();
+  // Prüfen, ob es eine flexible Intervall-Aufgabe ist und sie gerade abgehakt wird
+  const hasInterval = todo.interval_unit && todo.interval_unit !== 'none';
+  if (nextStatus === true && hasInterval) {
+    // Nächsten Termin auf Basis des aktuellen due_date (oder heute) berechnen
+    const baseDate = todo.due_date || new Date().toISOString().split('T')[0];
+    const nextDate = calculateNextDueDate(baseDate, todo.interval_value, todo.interval_unit);
 
-    if (todo.interval === 'monthly') {
-      // Setzt das Datum auf den 1. des nächsten Monats
-      nextDueDate = new Date(nextDueDate.getFullYear(), nextDueDate.getMonth() + 1, 1);
-    } else if (todo.interval === 'weekly') {
-      // 7 Tage aufaddieren
-      nextDueDate.setDate(nextDueDate.getDate() + 7);
-    } else if (todo.interval === 'biweekly') {
-      // 14 Tage aufaddieren
-      nextDueDate.setDate(nextDueDate.getDate() + 14);
-    }
-
-    // Formatierung als YYYY-MM-DD
-    const formattedDate = nextDueDate.toISOString().split('T')[0];
-
-    // In Supabase aktualisieren: Neus Fälligkeitsdatum setzen & is_done wieder auf false setzen!
     const { error: updateError } = await db
       .from('todos')
       .update({ 
         is_done: false, 
-        due_date: formattedDate 
+        due_date: nextDate 
       })
       .eq('id', id);
 
@@ -1908,7 +2053,7 @@ async function resetUserPassword(userId) {
     return;
   }
 
-  // 3. Normale Aufgabe ohne Intervall (Standard-Verhalten)
+  // Standard-Verhalten für einmalige Aufgaben
   const { error } = await db
     .from('todos')
     .update({ is_done: nextStatus })
@@ -1921,15 +2066,15 @@ async function resetUserPassword(userId) {
   }
 }
 
-    async function deleteTodo(id) {
-      await db.from('todos').delete().eq('id', id);
-      fetchTodos();
-    }
+async function deleteTodo(id) {
+  await db.from('todos').delete().eq('id', id);
+  fetchTodos();
+}
 
-    async function clearDoneTodos() {
-      await db.from('todos').delete().eq('is_done', true);
-      fetchTodos();
-    }
+async function clearDoneTodos() {
+  await db.from('todos').delete().eq('is_done', true);
+  fetchTodos();
+}
 
 // --- KATEGORIEN ---
 
@@ -4631,7 +4776,7 @@ if ('serviceWorker' in navigator && 'PushManager' in window) {
 }
 
 // Modal Öffnen & angemeldeten Nutzer anzeigen
-function openSettingsModal() {
+async function openSettingsModal() {
   const modal = document.getElementById('settings-modal');
   if (modal) modal.style.display = 'flex';
 
@@ -4641,6 +4786,9 @@ function openSettingsModal() {
   if (userDisplay && currentUserName) {
     userDisplay.innerText = currentUserName;
   }
+
+  // Gespeicherte Benachrichtigungseinstellungen aus Supabase laden
+  await loadNotificationSettings();
 }
 
 // Modal Schließen
@@ -4693,36 +4841,117 @@ async function enablePushForUser(userId) {
   try {
     const reg = await navigator.serviceWorker.ready;
     
-    // Alte, möglicherweise mit dem alten Key verknüpfte Subscription erst hier löschen
+    // Alte Subscription löschen, falls vorhanden
     const existingSubscription = await reg.pushManager.getSubscription();
     if (existingSubscription) {
       await existingSubscription.unsubscribe();
-      console.log('Alte Subscription erfolgreich gelöscht.');
     }
     
-    let subscription = await reg.pushManager.getSubscription();
-    
-    if (!subscription) {
-      subscription = await reg.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(PUBLIC_VAPID_KEY)
-      });
-    }
+    let subscription = await reg.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(PUBLIC_VAPID_KEY)
+    });
 
-    // Push-Subscription in Supabase für den aktiven User speichern
+    // WICHTIG: Subscription in einen String umwandeln für Supabase (JSONB oder TEXT Spalte)
+    const subscriptionData = JSON.parse(JSON.stringify(subscription));
+
+    // Push-Subscription & Schalter direkt beim Aktivieren mit auf true setzen
     const { error } = await db
       .from('users')
-      .update({ push_subscription: subscription })
-      .eq('id', userId);
+      .update({ 
+        push_subs: subscriptionData, // Passe den Spaltennamen an (z.B. push_subs oder push_subscription)
+        notif_shopping: true         // Beispiel: Direkt als aktiv markieren oder so belassen
+      })
+      .eq('id', userId); // Oder .eq('email', userEmail) je nachdem was du übergibst
 
     if (error) throw error;
 
     alert('Super! Push-Benachrichtigungen wurden für deinen Account auf diesem Gerät aktiviert. 🎉');
+    
+    // UI-Elemente aktualisieren falls nötig
     closeSettingsModal();
   } catch (err) {
     console.error('Fehler beim Speichern der Push-Subscription:', err);
     alert('Fehler beim Aktivieren der Benachrichtigungen. Prüfe bitte die Konsole.');
   }
+}
+
+// Schaltet die Sichtbarkeit der Uhrzeit-Felder um, wenn der Schalter betätigt wird
+function toggleTimeVisibility(type) {
+  const checkbox = document.getElementById(`notif-${type}`);
+  const container = document.getElementById(`time-container-${type}`);
+  if (checkbox && container) {
+    container.style.display = checkbox.checked ? 'block' : 'none';
+  }
+}
+
+// Einstellungen direkt in die Supabase 'users'-Tabelle schreiben
+async function saveNotificationSettings() {
+  const currentUserName = document.getElementById('current-user-display').textContent.trim();
+  if (!currentUserName || currentUserName === '-') return;
+
+  const settings = {
+    notif_shopping: document.getElementById('notif-shopping').checked,
+    notif_dinner: document.getElementById('notif-dinner').checked,
+    notif_dinner_time: document.getElementById('notif-dinner-time').value,
+    notif_todo_upcoming: document.getElementById('notif-todo-upcoming').checked,
+    notif_todo_daily: document.getElementById('notif-todo-daily').checked,
+    notif_schedule: document.getElementById('notif-schedule').checked,
+    notif_schedule_time: document.getElementById('notif-schedule-time').value
+  };
+
+  const { error } = await db
+    .from('users')
+    .update(settings)
+    .eq('name', currentUserName); // Hier nach 'name' statt 'email' filtern!
+
+  if (error) {
+    console.error('Fehler beim Speichern der Benachrichtigungseinstellungen:', error);
+  } else {
+    console.log('Einstellungen erfolgreich gespeichert!');
+  }
+}
+
+async function loadNotificationSettings() {
+  const currentUserName = document.getElementById('current-user-display').textContent.trim();
+  if (!currentUserName || currentUserName === '-') return;
+
+  // Verwende .eq('name', ...) und .maybeSingle() (verhindert den Absturz, falls 0 Zeilen da sind)
+  const { data, error } = await db
+    .from('users')
+    .select('notif_shopping, notif_dinner, notif_dinner_time, notif_todo_upcoming, notif_todo_daily, notif_schedule, notif_schedule_time')
+    .eq('name', currentUserName) 
+    .maybeSingle();
+
+  if (error) {
+    console.error('Fehler beim Laden der Benachrichtigungseinstellungen:', error);
+    return;
+  }
+
+  // Falls noch gar kein Datensatz für diesen Nutzer existiert, abbrechen
+  if (!data) {
+    console.log('Noch keine Einstellungen in der DB für diesen Nutzer gefunden.');
+    return;
+  }
+
+  // Schalter (Checkboxes) setzen
+  document.getElementById('notif-shopping').checked = Boolean(data.notif_shopping);
+  document.getElementById('notif-dinner').checked = Boolean(data.notif_dinner);
+  document.getElementById('notif-todo-upcoming').checked = Boolean(data.notif_todo_upcoming);
+  document.getElementById('notif-todo-daily').checked = Boolean(data.notif_todo_daily);
+  document.getElementById('notif-schedule').checked = Boolean(data.notif_schedule);
+
+  // Uhrzeiten setzen
+  if (data.notif_dinner_time) {
+    document.getElementById('notif-dinner-time').value = data.notif_dinner_time;
+  }
+  if (data.notif_schedule_time) {
+    document.getElementById('notif-schedule-time').value = data.notif_schedule_time;
+  }
+
+  // Sichtbarkeit der Uhrzeit-Container anpassen
+  toggleTimeVisibility('dinner');
+  toggleTimeVisibility('schedule');
 }
 
 // Passwort mit SHA-256 hashen
