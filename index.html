@@ -1461,6 +1461,28 @@ body, html {
   </div>
 </div>
 
+<!-- Dynamisches Notiz-Modal für mehrere Zeilen -->
+<div id="note-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center;">
+  <div style="background: var(--bg-main, #ffffff); padding: 20px; border-radius: 16px; width: 90%; max-width: 420px; box-shadow: 0 10px 25px rgba(0,0,0,0.2);">
+    <h3 id="note-modal-title" style="margin-top: 0; font-size: 1rem; color: var(--text); margin-bottom: 12px;">Notizen bearbeiten</h3>
+    
+    <!-- Container für die dynamischen Eingabezeilen -->
+    <div id="note-rows-container" style="display: flex; flex-direction: column; gap: 8px; max-height: 250px; overflow-y: auto; margin-bottom: 12px;">
+      <!-- Hier werden per JS die Zeilen eingefügt -->
+    </div>
+
+    <!-- Button um weitere Notiz-Zeilen hinzuzufügen -->
+    <button class="btn btn-secondary" type="button" onclick="addNoteRow('')" style="width: 100%; padding: 6px; font-size: 0.8rem; margin-bottom: 16px; border: 1px dashed var(--border);">
+      + Weitere Notiz hinzufügen
+    </button>
+
+    <div style="display: flex; justify-content: flex-end; gap: 8px;">
+      <button class="btn btn-secondary" onclick="closeNoteModal()" style="padding: 6px 14px; font-size: 0.85rem;">Abbrechen</button>
+      <button class="btn btn-primary" onclick="saveNoteFromModal()" style="padding: 6px 14px; font-size: 0.85rem;">Speichern</button>
+    </div>
+  </div>
+</div>
+
   <script>
     // --- SUPABASE INITIALISIERUNG ---
     const SUPABASE_URL = 'https://kyodeqhtxribkasxlleh.supabase.co';
@@ -3431,13 +3453,17 @@ async function fetchShoppingList() {
     return;
   }
 
-  // Mappen auf unser internes Format inklusive der Notiz aus der Datenbank
-  currentShoppingList = (data || []).map(row => ({
-    id: row.id,
-    name: row.text || '',
-    note: row.note || '', // Notiz wird hier nun korrekt übernommen
-    checked: row.done || false
-  }));
+  // Mappen & JSON-Notizen (als Array oder Klartext) parsen
+  currentShoppingList = (data || []).map(row => {
+    let rawNote = row.note || '';
+
+    return {
+      id: row.id,
+      name: row.text || '',
+      note: rawNote, // Speichert den rohen JSON-String/Text
+      checked: row.done || false
+    };
+  });
 
   if (typeof renderShoppingView === 'function') {
     renderShoppingView(document.getElementById('shopping-live-filter')?.value || '');
@@ -3459,20 +3485,53 @@ function renderShoppingView(filterQuery = '') {
     `;
   } else {
     activeContainer.innerHTML = currentShoppingList.map((item, index) => {
-      // Artikelnamen aus item.text (Supabase-Spalte) oder Fallback auf item.name
       const itemName = item.text || item.name || 'Artikel';
-      const itemNote = item.note && item.note.trim() !== '' ? item.note : '+ Notiz';
       const isDone = item.done || item.checked;
+
+      // Notizen in ein Array umwandeln (unterstützt JSON-Array, JSON-Objekt oder Klartext-Fallback)
+      let notesArray = [];
+      if (item.note && item.note.trim() !== '') {
+        try {
+          const parsed = JSON.parse(item.note);
+          if (Array.isArray(parsed)) {
+            notesArray = parsed;
+          } else if (typeof parsed === 'object' && parsed !== null) {
+            // Falls noch Reste vom alten Objekt-Format da sind
+            if (parsed.amount) notesArray.push(parsed.amount);
+            if (parsed.detail) notesArray.push(parsed.detail);
+          } else {
+            notesArray = [item.note];
+          }
+        } catch (e) {
+          notesArray = [item.note]; // Fallback für normalen Text
+        }
+      }
+
+      // HTML für die Notiz-Kästchen generieren (mehrere kleine graue Boxen oder das + Notiz Kästchen)
+      let notesHtml = '';
+      if (notesArray.length > 0) {
+        notesHtml = notesArray.map(noteText => `
+          <span style="font-size: 0.75rem; background: var(--bg-secondary, #f1f5f9); padding: 2px 6px; border-radius: 4px; color: var(--text-muted); border: 1px solid var(--border); cursor: pointer; white-space: nowrap;" title="Klicken, um Notizen zu bearbeiten" onclick="editShoppingItemNote(${index})">
+            ${noteText}
+          </span>
+        `).join('');
+      } else {
+        notesHtml = `
+          <span style="font-size: 0.75rem; background: var(--bg-secondary, #f1f5f9); padding: 2px 6px; border-radius: 4px; color: var(--text-muted); border: 1px solid var(--border); cursor: pointer;" title="Klicken, um Notiz hinzuzufügen" onclick="editShoppingItemNote(${index})">
+            + Notiz
+          </span>
+        `;
+      }
 
       return `
         <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 10px; border-bottom: 1px solid var(--border);">
-          <div style="display: flex; align-items: baseline; gap: 8px; flex: 1; text-decoration: ${isDone ? 'line-through' : 'none'}; color: ${isDone ? 'var(--text-muted)' : 'var(--text)'};">
+          <div style="display: flex; align-items: baseline; gap: 8px; flex: 1; text-decoration: ${isDone ? 'line-through' : 'none'}; color: ${isDone ? 'var(--text-muted)' : 'var(--text)'}; flex-wrap: wrap;">
             <span style="font-size: 0.9rem; font-weight: 600;">${itemName}</span>
-            <span style="font-size: 0.75rem; background: var(--bg-secondary, #f1f5f9); padding: 2px 6px; border-radius: 4px; color: var(--text-muted); border: 1px solid var(--border); cursor: pointer;" title="Klicken, um Notiz zu ändern" onclick="editShoppingItemNote(${index})">
-              ${itemNote}
-            </span>
+            <div style="display: flex; gap: 4px; flex-wrap: wrap; align-items: center;">
+              ${notesHtml}
+            </div>
           </div>
-          <div style="display: flex; gap: 6px;">
+          <div style="display: flex; gap: 6px; margin-left: 8px;">
             <button class="btn btn-secondary" style="padding: 2px 6px; font-size: 0.75rem;" onclick="toggleCheckShoppingItem(${index})">✔</button>
             <button class="btn btn-secondary" style="padding: 2px 6px; font-size: 0.75rem; color: var(--danger, #ef4444);" onclick="removeShoppingItem(${index})">✕</button>
           </div>
@@ -3568,42 +3627,67 @@ function renderShoppingView(filterQuery = '') {
   }
 }
 
-// Funktion zum Hinzufügen oder Bearbeiten einer Notiz zu einem Einkaufsartikel
+// Fügt eine neue Eingabezeile in das Modal ein
+function addNoteRow(textValue = '') {
+  const container = document.getElementById('note-rows-container');
+  if (!container) return;
+
+  const rowDiv = document.createElement('div');
+  rowDiv.style.cssText = 'display: flex; gap: 6px; align-items: center;';
+  
+  rowDiv.innerHTML = `
+    <input type="text" class="note-row-input" value="${textValue.replace(/"/g, '&quot;')}" placeholder="Z. B. Rot zwei Stücke..." style="flex: 1; padding: 8px; border: 1px solid var(--border); border-radius: 8px; font-size: 0.9rem; background: var(--bg-secondary, #f8fafc); color: var(--text);">
+    <button type="button" class="btn btn-secondary" onclick="this.parentElement.remove()" style="padding: 8px 10px; font-size: 0.8rem; color: var(--danger, #ef4444);" title="Zeile löschen">✕</button>
+  `;
+  
+  container.appendChild(rowDiv);
+  
+  // Wenn es eine neue, leere Zeile ist, direkt hineinfokussieren
+  if (!textValue) {
+    const input = rowDiv.querySelector('input');
+    if (input) input.focus();
+  }
+}
+
+// Öffnet das Modal und befüllt die Zeilen aus den vorhandenen Daten
 async function editShoppingItemNote(index) {
   if (!currentShoppingList || !currentShoppingList[index]) return;
 
+  currentNoteIndex = index;
   const currentItem = currentShoppingList[index];
-  // Nutze item.text als Fallback, falls .name nicht existiert
-  const itemName = currentItem.text || currentItem.name;
-  const oldNote = currentItem.note || '';
+  const itemName = currentItem.text || currentItem.name || 'Artikel';
 
-  // 1. Notiz per Prompt abfragen
-  const newNote = prompt(`Notiz für "${itemName}" eingeben:`, oldNote);
-  if (newNote === null) return;
+  document.getElementById('note-modal-title').innerText = `Notizen für "${itemName}"`;
+  
+  const container = document.getElementById('note-rows-container');
+  container.innerHTML = ''; // Vorherige Zeilen leeren
 
-  const trimmedNote = newNote.trim();
-
-  // 2. Im lokalen Objekt aktualisieren (sowohl .note als auch .text-Abgleich absichern)
-  currentItem.note = trimmedNote;
-
-  // 3. UI sofort neu rendern
-  renderShoppingView(document.getElementById('search-catalog')?.value || '');
-
-  // 4. Dauerhaft in Supabase speichern (Tabelle 'shopping_list')
+  // Versuche, Notizen als JSON-Array zu laden, ansonsten als einzelnen Text behandeln
+  let notesArray = [];
   try {
-    const { error } = await db
-      .from('shopping_list')
-      .update({ note: trimmedNote })
-      .eq('id', currentItem.id);
-
-    if (error) {
-      console.error('Fehler beim Speichern der Notiz in Supabase:', error);
-    } else {
-      console.log(`Notiz für "${itemName}" erfolgreich gespeichert!`);
+    const parsed = JSON.parse(currentItem.note || '[]');
+    if (Array.isArray(parsed)) {
+      notesArray = parsed;
+    } else if (currentItem.note) {
+      notesArray = [currentItem.note];
     }
-  } catch (err) {
-    console.error('Fehler beim Update:', err);
+  } catch (e) {
+    if (currentItem.note) {
+      notesArray = [currentItem.note];
+    }
   }
+
+  // Wenn keine Notizen da sind, direkt eine leere Zeile anzeigen
+  if (notesArray.length === 0) {
+    notesArray.push('');
+  }
+
+  // Für jede Notiz eine Zeile erstellen
+  notesArray.forEach(noteText => {
+    addNoteRow(noteText);
+  });
+
+  document.getElementById('note-modal').style.display = 'flex';
 }
 
 // Echtzeit-Synchronisation für die Einkaufsliste
@@ -3623,6 +3707,72 @@ function setupRealtimeEinkaufsliste() {
     .subscribe((status, err) => {
       if (err) console.error('Realtime Fehler:', err);
     });
+}
+
+// Modal öffnen und aktuellen Wert vorausfüllen
+function openNoteModal(index) {
+  if (!currentShoppingList || !currentShoppingList[index]) return;
+  currentNoteIndex = index;
+  const currentItem = currentShoppingList[index];
+  const itemName = currentItem.text || currentItem.name || 'Artikel';
+  
+  document.getElementById('note-modal-title').innerText = `Notiz für "${itemName}"`;
+  document.getElementById('note-modal-input').value = currentItem.note || '';
+  document.getElementById('note-modal').style.display = 'flex';
+  
+  // Sofort den Fokus ins Textfeld setzen
+  setTimeout(() => {
+    document.getElementById('note-modal-input').focus();
+  }, 50);
+}
+
+// Modal schließen ohne zu speichern
+function closeNoteModal() {
+  document.getElementById('note-modal').style.display = 'none';
+  currentNoteIndex = null;
+}
+
+// Speichert alle Zeilen als JSON-Array in Supabase
+async function saveNoteFromModal() {
+  if (currentNoteIndex === null || !currentShoppingList[currentNoteIndex]) return;
+
+  const currentItem = currentShoppingList[currentNoteIndex];
+  
+  // Alle Eingabefelder im Modal einsammeln
+  const inputFields = document.querySelectorAll('.note-row-input');
+  let notesArray = [];
+  
+  inputFields.forEach(input => {
+    const val = input.value.trim();
+    if (val !== '') {
+      notesArray.push(val);
+    }
+  });
+
+  // Als JSON-String umwandeln (oder leer, wenn nichts eingetragen wurde)
+  const jsonString = notesArray.length > 0 ? JSON.stringify(notesArray) : '';
+
+  // Lokal aktualisieren
+  currentItem.note = jsonString;
+
+  closeNoteModal();
+  renderShoppingView(document.getElementById('shopping-live-filter')?.value || '');
+
+  // In Supabase speichern
+  try {
+    const { error } = await db
+      .from('shopping_list')
+      .update({ note: jsonString })
+      .eq('id', currentItem.id);
+
+    if (error) {
+      console.error('Fehler beim Speichern der Notizen in Supabase:', error);
+    } else {
+      console.log(`Notizen für "${currentItem.text || currentItem.name}" erfolgreich gespeichert!`);
+    }
+  } catch (err) {
+    console.error('Fehler beim Update:', err);
+  }
 }
 
 document.addEventListener('DOMContentLoaded', () => {
