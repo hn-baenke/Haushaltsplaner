@@ -3431,11 +3431,11 @@ async function fetchShoppingList() {
     return;
   }
 
-  // Mappen auf unser internes Format
+  // Mappen auf unser internes Format inklusive der Notiz aus der Datenbank
   currentShoppingList = (data || []).map(row => ({
     id: row.id,
     name: row.text || '',
-    note: '',
+    note: row.note || '', // Notiz wird hier nun korrekt übernommen
     checked: row.done || false
   }));
 
@@ -3458,28 +3458,35 @@ function renderShoppingView(filterQuery = '') {
       </div>
     `;
   } else {
-    activeContainer.innerHTML = currentShoppingList.map((item, index) => `
-      <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 10px; border-bottom: 1px solid var(--border);">
-        <div style="display: flex; align-items: baseline; gap: 8px; flex: 1; text-decoration: ${item.checked ? 'line-through' : 'none'}; color: ${item.checked ? 'var(--text-muted)' : 'var(--text)'};">
-          <span style="font-size: 0.9rem; font-weight: 600;">${item.name}</span>
-          <span style="font-size: 0.75rem; background: var(--bg-secondary, #f1f5f9); padding: 2px 6px; border-radius: 4px; color: var(--text-muted); border: 1px solid var(--border); cursor: pointer;" title="Klicken, um Notiz zu ändern" onclick="editShoppingItemNote(${index})">
-            ${item.note ? item.note : '+ Notiz'}
-          </span>
+    activeContainer.innerHTML = currentShoppingList.map((item, index) => {
+      // Artikelnamen aus item.text (Supabase-Spalte) oder Fallback auf item.name
+      const itemName = item.text || item.name || 'Artikel';
+      const itemNote = item.note && item.note.trim() !== '' ? item.note : '+ Notiz';
+      const isDone = item.done || item.checked;
+
+      return `
+        <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 10px; border-bottom: 1px solid var(--border);">
+          <div style="display: flex; align-items: baseline; gap: 8px; flex: 1; text-decoration: ${isDone ? 'line-through' : 'none'}; color: ${isDone ? 'var(--text-muted)' : 'var(--text)'};">
+            <span style="font-size: 0.9rem; font-weight: 600;">${itemName}</span>
+            <span style="font-size: 0.75rem; background: var(--bg-secondary, #f1f5f9); padding: 2px 6px; border-radius: 4px; color: var(--text-muted); border: 1px solid var(--border); cursor: pointer;" title="Klicken, um Notiz zu ändern" onclick="editShoppingItemNote(${index})">
+              ${itemNote}
+            </span>
+          </div>
+          <div style="display: flex; gap: 6px;">
+            <button class="btn btn-secondary" style="padding: 2px 6px; font-size: 0.75rem;" onclick="toggleCheckShoppingItem(${index})">✔</button>
+            <button class="btn btn-secondary" style="padding: 2px 6px; font-size: 0.75rem; color: var(--danger, #ef4444);" onclick="removeShoppingItem(${index})">✕</button>
+          </div>
         </div>
-        <div style="display: flex; gap: 6px;">
-          <button class="btn btn-secondary" style="padding: 2px 6px; font-size: 0.75rem;" onclick="toggleCheckShoppingItem(${index})">✔</button>
-          <button class="btn btn-secondary" style="padding: 2px 6px; font-size: 0.75rem; color: var(--danger, #ef4444);" onclick="removeShoppingItem(${index})">✕</button>
-        </div>
-      </div>
-    `).join('');
+      `;
+    }).join('');
   }
 
   // --- B) Datenbank-Katalog verarbeiten & sortieren ---
   const query = filterQuery.trim().toLowerCase();
 
   const activeItemNames = currentShoppingList
-    .filter(item => !item.checked)
-    .map(item => item.name.toLowerCase());
+    .filter(item => !item.done && !item.checked)
+    .map(item => (item.text || item.name || '').toLowerCase());
 
   let filteredCatalog = ingredientCatalog.filter(catItem =>
     catItem.name && catItem.name.toLowerCase().includes(query)
@@ -3558,6 +3565,44 @@ function renderShoppingView(filterQuery = '') {
         </div>
       `;
     }).join('');
+  }
+}
+
+// Funktion zum Hinzufügen oder Bearbeiten einer Notiz zu einem Einkaufsartikel
+async function editShoppingItemNote(index) {
+  if (!currentShoppingList || !currentShoppingList[index]) return;
+
+  const currentItem = currentShoppingList[index];
+  // Nutze item.text als Fallback, falls .name nicht existiert
+  const itemName = currentItem.text || currentItem.name;
+  const oldNote = currentItem.note || '';
+
+  // 1. Notiz per Prompt abfragen
+  const newNote = prompt(`Notiz für "${itemName}" eingeben:`, oldNote);
+  if (newNote === null) return;
+
+  const trimmedNote = newNote.trim();
+
+  // 2. Im lokalen Objekt aktualisieren (sowohl .note als auch .text-Abgleich absichern)
+  currentItem.note = trimmedNote;
+
+  // 3. UI sofort neu rendern
+  renderShoppingView(document.getElementById('search-catalog')?.value || '');
+
+  // 4. Dauerhaft in Supabase speichern (Tabelle 'shopping_list')
+  try {
+    const { error } = await db
+      .from('shopping_list')
+      .update({ note: trimmedNote })
+      .eq('id', currentItem.id);
+
+    if (error) {
+      console.error('Fehler beim Speichern der Notiz in Supabase:', error);
+    } else {
+      console.log(`Notiz für "${itemName}" erfolgreich gespeichert!`);
+    }
+  } catch (err) {
+    console.error('Fehler beim Update:', err);
   }
 }
 
