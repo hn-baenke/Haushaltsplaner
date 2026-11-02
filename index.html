@@ -5206,7 +5206,7 @@ async function enablePushForUser(userId) {
     // WICHTIG: Subscription in ein Objekt umwandeln für Supabase
     const subscriptionData = JSON.parse(JSON.stringify(subscription));
 
-    // Push-Subscription in Supabase speichern (korrekter Spaltenname: push_subscription)
+    // Push-Subscription in Supabase speichern
     const { error } = await db
       .from('users')
       .update({ 
@@ -5244,27 +5244,29 @@ async function saveNotificationSettings() {
   const currentUserName = userDisplay.textContent.trim();
   if (!currentUserName || currentUserName === '-') return;
 
-  const notifShopping = document.getElementById('notif-shopping').checked;
-  const notifDinner = document.getElementById('notif-dinner').checked;
-  const notifTodoUpcoming = document.getElementById('notif-todo-upcoming').checked;
-  const notifTodoDaily = document.getElementById('notif-todo-daily').checked;
-  const notifSchedule = document.getElementById('notif-schedule').checked;
+  const notifShopping = document.getElementById('notif-shopping')?.checked || false;
+  const notifShoppingReminder = document.getElementById('notif-shopping-reminder')?.checked || false;
+  const notifDinner = document.getElementById('notif-dinner')?.checked || false;
+  const notifTodoUpcoming = document.getElementById('notif-todo-upcoming')?.checked || false;
+  const notifTodoDaily = document.getElementById('notif-todo-daily')?.checked || false;
+  const notifSchedule = document.getElementById('notif-schedule')?.checked || false;
 
   const settings = {
     notif_shopping: notifShopping,
+    notif_shopping_reminder: notifShoppingReminder,
+    notif_shopping_reminder_time: document.getElementById('shopping-notification-time')?.value || '17:00',
     notif_dinner: notifDinner,
-    notif_dinner_time: document.getElementById('notif-dinner-time').value,
+    notif_dinner_time: document.getElementById('notif-dinner-time')?.value || '22:24',
     notif_todo_upcoming: notifTodoUpcoming,
     notif_todo_daily: notifTodoDaily,
     notif_schedule: notifSchedule,
-    notif_schedule_time: document.getElementById('notif-schedule-time').value
+    notif_schedule_time: document.getElementById('notif-schedule-time')?.value || '07:00'
   };
 
   // Prüfen, ob ALLE Schalter auf aus (false) stehen
-  const allOff = !notifShopping && !notifDinner && !notifTodoUpcoming && !notifTodoDaily && !notifSchedule;
+  const allOff = !notifShopping && !notifShoppingReminder && !notifDinner && !notifTodoUpcoming && !notifTodoDaily && !notifSchedule;
 
   if (allOff) {
-    // Wenn alles aus ist, Push-Subscription im Browser komplett aufheben
     if ('serviceWorker' in navigator && 'PushManager' in window) {
       try {
         const reg = await navigator.serviceWorker.ready;
@@ -5276,10 +5278,8 @@ async function saveNotificationSettings() {
         console.error("Fehler beim Aufheben der Subscription:", err);
       }
     }
-    // In der Datenbank ebenfalls löschen
     settings.push_subscription = null;
 
-    // UI SOFORT direkt zurücksetzen, damit der Button und Text wieder da sind
     const container = document.getElementById('push-permission-container');
     const statusText = document.getElementById('push-status-text');
     if (container) container.style.display = 'block';
@@ -5298,7 +5298,6 @@ async function saveNotificationSettings() {
     console.error('Fehler beim Speichern der Benachrichtigungseinstellungen:', error);
   } else {
     console.log('Einstellungen erfolgreich gespeichert!');
-    // Zusätzlicher Check, falls nicht alles aus war
     if (!allOff) {
       checkAndTogglePushButton();
     }
@@ -5311,9 +5310,10 @@ async function loadNotificationSettings() {
   const currentUserName = userDisplay.textContent.trim();
   if (!currentUserName || currentUserName === '-') return;
 
+  // Spalten um die neuen Erweiterungen ergänzt
   const { data, error } = await db
     .from('users')
-    .select('notif_shopping, notif_dinner, notif_dinner_time, notif_todo_upcoming, notif_todo_daily, notif_schedule, notif_schedule_time')
+    .select('notif_shopping, notif_shopping_reminder, notif_shopping_reminder_time, notif_dinner, notif_dinner_time, notif_todo_upcoming, notif_todo_daily, notif_schedule, notif_schedule_time')
     .eq('name', currentUserName) 
     .maybeSingle();
 
@@ -5328,21 +5328,36 @@ async function loadNotificationSettings() {
   }
 
   // Schalter (Checkboxes) setzen
-  document.getElementById('notif-shopping').checked = Boolean(data.notif_shopping);
-  document.getElementById('notif-dinner').checked = Boolean(data.notif_dinner);
-  document.getElementById('notif-todo-upcoming').checked = Boolean(data.notif_todo_upcoming);
-  document.getElementById('notif-todo-daily').checked = Boolean(data.notif_todo_daily);
-  document.getElementById('notif-schedule').checked = Boolean(data.notif_schedule);
+  const elShop = document.getElementById('notif-shopping');
+  const elShopReminder = document.getElementById('notif-shopping-reminder');
+  const elDinner = document.getElementById('notif-dinner');
+  const elTodoUp = document.getElementById('notif-todo-upcoming');
+  const elTodoDaily = document.getElementById('notif-todo-daily');
+  const elSchedule = document.getElementById('notif-schedule');
+
+  if (elShop) elShop.checked = Boolean(data.notif_shopping);
+  if (elShopReminder) elShopReminder.checked = Boolean(data.notif_shopping_reminder);
+  if (elDinner) elDinner.checked = Boolean(data.notif_dinner);
+  if (elTodoUp) elTodoUp.checked = Boolean(data.notif_todo_upcoming);
+  if (elTodoDaily) elTodoDaily.checked = Boolean(data.notif_todo_daily);
+  if (elSchedule) elSchedule.checked = Boolean(data.notif_schedule);
 
   // Uhrzeiten setzen
+  if (data.notif_shopping_reminder_time) {
+    const timeField = document.getElementById('shopping-notification-time');
+    if (timeField) timeField.value = data.notif_shopping_reminder_time.substring(0, 5);
+  }
   if (data.notif_dinner_time) {
-    document.getElementById('notif-dinner-time').value = data.notif_dinner_time;
+    const timeField = document.getElementById('notif-dinner-time');
+    if (timeField) timeField.value = data.notif_dinner_time.substring(0, 5);
   }
   if (data.notif_schedule_time) {
-    document.getElementById('notif-schedule-time').value = data.notif_schedule_time;
+    const timeField = document.getElementById('notif-schedule-time');
+    if (timeField) timeField.value = data.notif_schedule_time.substring(0, 5);
   }
 
   // Sichtbarkeit der Uhrzeit-Container anpassen
+  toggleTimeVisibility('shopping-reminder');
   toggleTimeVisibility('dinner');
   toggleTimeVisibility('schedule');
 }
@@ -5353,21 +5368,20 @@ async function checkAndTogglePushButton() {
   const statusText = document.getElementById('push-status-text');
   if (!container) return;
 
-  // Prüfen, ob aktuell mindestens ein Schalter auf AN steht
   const notifShopping = document.getElementById('notif-shopping')?.checked || false;
+  const notifShoppingReminder = document.getElementById('notif-shopping-reminder')?.checked || false;
   const notifDinner = document.getElementById('notif-dinner')?.checked || false;
   const notifTodoUpcoming = document.getElementById('notif-todo-upcoming')?.checked || false;
   const notifTodoDaily = document.getElementById('notif-todo-daily')?.checked || false;
   const notifSchedule = document.getElementById('notif-schedule')?.checked || false;
   
-  const anySwitchOn = notifShopping || notifDinner || notifTodoUpcoming || notifTodoDaily || notifSchedule;
+  const anySwitchOn = notifShopping || notifShoppingReminder || notifDinner || notifTodoUpcoming || notifTodoDaily || notifSchedule;
 
   if ('serviceWorker' in navigator && 'PushManager' in window) {
     try {
       const registration = await navigator.serviceWorker.ready;
       const subscription = await registration.pushManager.getSubscription();
       
-      // Nur wenn eine Subscription da UND mindestens ein Schalter an ist, ist es "aktiv"
       if (subscription && anySwitchOn) {
         container.style.display = 'none';
         if (statusText) {
@@ -5375,7 +5389,6 @@ async function checkAndTogglePushButton() {
           statusText.style.color = "#16a34a";
         }
       } else {
-        // Ansonsten Button und Standardtext anzeigen
         container.style.display = 'block';
         if (statusText) {
           statusText.innerText = "Erlaube Push-Benachrichtigungen im Browser, um Mitteilungen direkt auf deinen Geräten zu erhalten.";
