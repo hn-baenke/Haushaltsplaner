@@ -1383,14 +1383,32 @@ body, html {
         .switch input:checked + .slider:before { transform: translateX(20px); }
       </style>
 
-      <!-- 1. Einkaufsliste -->
-      <div class="notif-row">
-        <span style="font-size: 0.9rem; color: #334155;">Einkaufsliste</span>
-        <label class="switch">
-          <input type="checkbox" id="notif-shopping" onchange="saveNotificationSettings()">
-          <span class="slider"></span>
-        </label>
-      </div>
+      <!-- 1. Einkaufsliste Live-Updates -->
+<div class="notif-row" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+  <span style="font-size: 0.9rem; color: #334155;">Einkaufsliste (Live-Updates)</span>
+  <label class="switch">
+    <input type="checkbox" id="notif-shopping" onchange="saveNotificationSettings()">
+    <span class="slider"></span>
+  </label>
+</div>
+
+<!-- 2. Einkaufsliste Tägliche Erinnerung -->
+<div style="margin-bottom: 12px; border-bottom: 1px solid var(--border, #e2e8f0); padding-bottom: 12px;">
+  <div class="notif-row" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+    <span style="font-size: 0.9rem; color: #334155;">Einkaufs-Erinnerung</span>
+    <label class="switch">
+      <!-- Nutzt deine bestehende Funktion mit dem Typ 'shopping-reminder' -->
+      <input type="checkbox" id="notif-shopping-reminder" onchange="toggleTimeVisibility('shopping-reminder'); saveNotificationSettings()">
+      <span class="slider"></span>
+    </label>
+  </div>
+  
+  <!-- Der Container nutzt genau das Namensschema deiner Funktion -->
+  <div id="time-container-shopping-reminder" style="display: none; margin-top: 8px;">
+    <label for="shopping-notification-time" style="font-size: 0.75rem; color: var(--text-muted, #64748b); display: block; margin-bottom: 2px;">Uhrzeit:</label>
+    <input type="time" id="shopping-notification-time" class="form-control" value="17:00" onchange="saveNotificationSettings()" style="width: 100%; padding: 6px; border-radius: 6px; border: 1px solid var(--border, #cbd5e1);">
+  </div>
+</div>
 
       <!-- 2. Heutiges Abendessen (mit Uhrzeit) -->
       <div style="margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid #e2e8f0;">
@@ -1466,6 +1484,21 @@ body, html {
   <div style="background: var(--bg-main, #ffffff); padding: 20px; border-radius: 16px; width: 90%; max-width: 420px; box-shadow: 0 10px 25px rgba(0,0,0,0.2);">
     <h3 id="note-modal-title" style="margin-top: 0; font-size: 1rem; color: var(--text); margin-bottom: 12px;">Notizen bearbeiten</h3>
     
+    <!-- NEU: Dropdown für die Wochentags-Zuordnung -->
+    <div style="margin-bottom: 12px;">
+      <label style="font-size: 0.75rem; font-weight: 600; color: var(--text-muted); display: block; margin-bottom: 4px;">Wochentag-Zuordnung</label>
+      <select id="note-modal-day-select" style="width: 100%; padding: 8px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg-secondary, #f8fafc); color: var(--text); font-size: 0.85rem;">
+        <option value="">Kein Wochentag (Allgemein)</option>
+        <option value="Montag">Montag</option>
+        <option value="Dienstag">Dienstag</option>
+        <option value="Mittwoch">Mittwoch</option>
+        <option value="Donnerstag">Donnerstag</option>
+        <option value="Freitag">Freitag</option>
+        <option value="Samstag">Samstag</option>
+        <option value="Sonntag">Sonntag</option>
+      </select>
+    </div>
+
     <!-- Container für die dynamischen Eingabezeilen -->
     <div id="note-rows-container" style="display: flex; flex-direction: column; gap: 8px; max-height: 250px; overflow-y: auto; margin-bottom: 12px;">
       <!-- Hier werden per JS die Zeilen eingefügt -->
@@ -1511,6 +1544,7 @@ body, html {
     
     // Rezept-Detailansicht Status
     let currentActiveRecipe = null;
+    let currentSelectedDay = '';
     let currentTargetServings = 4;
     let currentStepIndex = 0;
     let allSavedPlans = [];
@@ -3311,29 +3345,37 @@ function populateIngredientRows(ingredientsArray) {
 }
 
     function renderWochenplaene(plansData) {
-      const list = document.getElementById('wochenplaene-list');
-      if (!plansData || plansData.length === 0) {
-        list.innerHTML = '<p style="color: var(--text-muted);">Noch keine gespeicherten Wochenpläne vorhanden.</p>';
-        return;
-      }
+  const list = document.getElementById('wochenplaene-list');
+  if (!plansData || plansData.length === 0) {
+    list.innerHTML = '<p style="color: var(--text-muted);">Noch keine gespeicherten Wochenpläne vorhanden.</p>';
+    return;
+  }
 
-      list.innerHTML = plansData.map(item => `
-        <div class="card">
-          <div class="actions-bar">
-            <strong>${item.week_name}</strong>
-            <button class="btn btn-danger" style="padding:2px 8px; font-size:0.75rem;" onclick="deleteWochenplan('${item.id}')">Löschen</button>
-          </div>
-          <div class="compact-week-list">
-            ${days.map(d => `
-              <div class="compact-day-row">
-                <span class="compact-day-name">${d}:</span>
-                <span class="compact-day-meal ${!item.meals[d] ? 'empty' : ''}">${item.meals[d] || '-'}</span>
-              </div>
-            `).join('')}
-          </div>
-        </div>
-      `).join('');
-    }
+  list.innerHTML = plansData.map(item => `
+    <div class="card">
+      <div class="actions-bar">
+        <strong>${item.week_name}</strong>
+        <button class="btn btn-danger" style="padding:2px 8px; font-size:0.75rem;" onclick="deleteWochenplan('${item.id}')">Löschen</button>
+      </div>
+      <div class="compact-week-list">
+        ${days.map(d => {
+          const mealName = item.meals[d];
+          const hasMeal = mealName && mealName.trim() !== '' && mealName !== '-';
+
+          return `
+            <div class="compact-day-row">
+              <span class="compact-day-name">${d}:</span>
+              <span class="compact-day-meal ${!hasMeal ? 'empty' : ''}" 
+                ${hasMeal ? `onclick="openRecipeIngredients('${mealName.replace(/'/g, "\\'")}', '${d}')" style="cursor: pointer; color: var(--primary); font-weight: 500;" title="Klicken, um Zutaten auf die Einkaufsliste zu setzen"` : ''}>
+                ${mealName || '-'}
+              </span>
+            </div>
+          `;
+        }).join('')}
+      </div>
+    </div>
+  `).join('');
+}
 
     async function deleteWochenplan(id) {
       if (confirm('Möchtest du diesen Wochenplan löschen?')) {
@@ -3471,6 +3513,7 @@ async function fetchShoppingList() {
 }
 
 // 1. Einkaufsliste und den Katalog rendern
+// 1. Einkaufsliste und den Katalog rendern (nach Wochentagen gruppiert)
 function renderShoppingView(filterQuery = '') {
   const activeContainer = document.getElementById('active-shopping-list');
   const catalogContainer = document.getElementById('catalog-items-container');
@@ -3484,11 +3527,19 @@ function renderShoppingView(filterQuery = '') {
       </div>
     `;
   } else {
-    activeContainer.innerHTML = currentShoppingList.map((item, index) => {
-      const itemName = item.text || item.name || 'Artikel';
-      const isDone = item.done || item.checked;
+    // Wochentage definieren und den heutigen Tag ermitteln
+    const weekdays = ['Sonntag', 'Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag'];
+    const todayName = weekdays[new Date().getDay()];
 
-      // Notizen in ein Array umwandeln (unterstützt JSON-Array, JSON-Objekt oder Klartext-Fallback)
+    // Artikel-Gruppen initialisieren
+    const groups = {
+      today: { title: `📌 Heute (${todayName})`, items: [] },
+      general: { title: '🛒 Allgemein', items: [] },
+      upcoming: {} // Für alle weiteren kommenden Wochentage
+    };
+
+    currentShoppingList.forEach((item, index) => {
+      // 1:1 deine exakte Notizen-Parsing-Logik
       let notesArray = [];
       if (item.note && item.note.trim() !== '') {
         try {
@@ -3496,7 +3547,6 @@ function renderShoppingView(filterQuery = '') {
           if (Array.isArray(parsed)) {
             notesArray = parsed;
           } else if (typeof parsed === 'object' && parsed !== null) {
-            // Falls noch Reste vom alten Objekt-Format da sind
             if (parsed.amount) notesArray.push(parsed.amount);
             if (parsed.detail) notesArray.push(parsed.detail);
           } else {
@@ -3507,37 +3557,104 @@ function renderShoppingView(filterQuery = '') {
         }
       }
 
-      // HTML für die Notiz-Kästchen generieren (mehrere kleine graue Boxen oder das + Notiz Kästchen)
-      let notesHtml = '';
-      if (notesArray.length > 0) {
-        notesHtml = notesArray.map(noteText => `
-          <span style="font-size: 0.75rem; background: var(--bg-secondary, #f1f5f9); padding: 2px 6px; border-radius: 4px; color: var(--text-muted); border: 1px solid var(--border); cursor: pointer; white-space: nowrap;" title="Klicken, um Notizen zu bearbeiten" onclick="editShoppingItemNote(${index})">
-            ${noteText}
-          </span>
-        `).join('');
-      } else {
-        notesHtml = `
-          <span style="font-size: 0.75rem; background: var(--bg-secondary, #f1f5f9); padding: 2px 6px; border-radius: 4px; color: var(--text-muted); border: 1px solid var(--border); cursor: pointer;" title="Klicken, um Notiz hinzuzufügen" onclick="editShoppingItemNote(${index})">
-            + Notiz
-          </span>
-        `;
-      }
+      // Wochentag aus den Notizen ermitteln (falls vorhanden)
+      let assignedDay = null;
+      notesArray.forEach(noteText => {
+        const trimmed = String(noteText).trim();
+        const foundDay = weekdays.find(d => d.toLowerCase() === trimmed.toLowerCase());
+        if (foundDay) {
+          assignedDay = foundDay;
+        }
+      });
 
-      return `
-        <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 10px; border-bottom: 1px solid var(--border);">
-          <div style="display: flex; align-items: baseline; gap: 8px; flex: 1; text-decoration: ${isDone ? 'line-through' : 'none'}; color: ${isDone ? 'var(--text-muted)' : 'var(--text)'}; flex-wrap: wrap;">
-            <span style="font-size: 0.9rem; font-weight: 600;">${itemName}</span>
-            <div style="display: flex; gap: 4px; flex-wrap: wrap; align-items: center;">
-              ${notesHtml}
-            </div>
-          </div>
-          <div style="display: flex; gap: 6px; margin-left: 8px;">
-            <button class="btn btn-secondary" style="padding: 2px 6px; font-size: 0.75rem;" onclick="toggleCheckShoppingItem(${index})">✔</button>
-            <button class="btn btn-secondary" style="padding: 2px 6px; font-size: 0.75rem; color: var(--danger, #ef4444);" onclick="removeShoppingItem(${index})">✕</button>
-          </div>
+      // In die jeweilige Gruppe einsortieren
+      if (assignedDay === todayName) {
+        groups.today.items.push({ item, index, notesArray });
+      } else if (assignedDay) {
+        if (!groups.upcoming[assignedDay]) {
+          groups.upcoming[assignedDay] = [];
+        }
+        groups.upcoming[assignedDay].push({ item, index, notesArray });
+      } else {
+        groups.general.items.push({ item, index, notesArray });
+      }
+    });
+
+    // Reihenfolge der kommenden Wochentage ab morgen berechnen
+    const todayIndex = new Date().getDay();
+    let sortedUpcomingDays = [];
+    for (let i = 1; i <= 7; i++) {
+      const dayIdx = (todayIndex + i) % 7;
+      const dayName = weekdays[dayIdx];
+      if (groups.upcoming[dayName] && groups.upcoming[dayName].length > 0) {
+        sortedUpcomingDays.push(dayName);
+      }
+    }
+
+    // Hilfsfunktion zum Rendern einer Gruppen-Sektion
+    const renderGroupHtml = (title, itemsList) => {
+      if (itemsList.length === 0) return '';
+      
+      let groupHtml = `
+        <div style="font-size: 0.8rem; font-weight: 700; color: var(--primary, #3b82f6); margin: 12px 0 4px 4px; text-transform: uppercase; letter-spacing: 0.5px;">
+          ${title}
         </div>
       `;
-    }).join('');
+
+      groupHtml += itemsList.map(({ item, index, notesArray }) => {
+        const itemName = item.text || item.name || 'Artikel';
+        const isDone = item.done || item.checked;
+
+        // --- Wochentag aus den sichtbaren Notiz-Badges herausfiltern ---
+        const visibleNotes = notesArray.filter(noteText => {
+          const trimmed = String(noteText).trim();
+          return !weekdays.some(d => d.toLowerCase() === trimmed.toLowerCase());
+        });
+
+        // HTML für die Notiz-Kästchen generieren
+        let notesHtml = '';
+        if (visibleNotes.length > 0) {
+          notesHtml = visibleNotes.map(noteText => `
+            <span style="font-size: 0.75rem; background: var(--bg-secondary, #f1f5f9); padding: 2px 6px; border-radius: 4px; color: var(--text-muted); border: 1px solid var(--border); cursor: pointer; white-space: nowrap;" title="Klicken, um Notizen zu bearbeiten" onclick="editShoppingItemNote(${index})">
+              ${noteText}
+            </span>
+          `).join('');
+        } else {
+          notesHtml = `
+            <span style="font-size: 0.75rem; background: var(--bg-secondary, #f1f5f9); padding: 2px 6px; border-radius: 4px; color: var(--text-muted); border: 1px solid var(--border); cursor: pointer;" title="Klicken, um Notiz hinzuzufügen" onclick="editShoppingItemNote(${index})">
+              + Notiz
+            </span>
+          `;
+        }
+
+        return `
+          <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 10px; border-bottom: 1px solid var(--border); background: var(--bg-main); border-radius: 8px; margin-bottom: 4px;">
+            <div style="display: flex; align-items: baseline; gap: 8px; flex: 1; text-decoration: ${isDone ? 'line-through' : 'none'}; color: ${isDone ? 'var(--text-muted)' : 'var(--text)'}; flex-wrap: wrap;">
+              <span style="font-size: 0.9rem; font-weight: 600;">${itemName}</span>
+              <div style="display: flex; gap: 4px; flex-wrap: wrap; align-items: center;">
+                ${notesHtml}
+              </div>
+            </div>
+            <div style="display: flex; gap: 6px; margin-left: 8px;">
+              <button class="btn btn-secondary" style="padding: 2px 6px; font-size: 0.75rem;" onclick="toggleCheckShoppingItem(${index})">✔</button>
+              <button class="btn btn-secondary" style="padding: 2px 6px; font-size: 0.75rem; color: var(--danger, #ef4444);" onclick="removeShoppingItem(${index})">✕</button>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      return groupHtml;
+    };
+
+    // Gruppen zusammenbauen: 1. Heute -> 2. Allgemein -> 3. Weitere Tage
+    let htmlOutput = '';
+    htmlOutput += renderGroupHtml(groups.today.title, groups.today.items);
+    htmlOutput += renderGroupHtml(groups.general.title, groups.general.items);
+    sortedUpcomingDays.forEach(dayName => {
+      htmlOutput += renderGroupHtml(`📅 ${dayName}`, groups.upcoming[dayName]);
+    });
+
+    activeContainer.innerHTML = htmlOutput;
   }
 
   // --- B) Datenbank-Katalog verarbeiten & sortieren ---
@@ -3662,7 +3779,10 @@ async function editShoppingItemNote(index) {
   const container = document.getElementById('note-rows-container');
   container.innerHTML = ''; // Vorherige Zeilen leeren
 
-  // Versuche, Notizen als JSON-Array zu laden, ansonsten als einzelnen Text behandeln
+  // Wochentage definieren
+  const weekdays = ['Sonntag', 'Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag'];
+
+  // Versuche, Notizen als JSON-Array zu laden
   let notesArray = [];
   try {
     const parsed = JSON.parse(currentItem.note || '[]');
@@ -3677,13 +3797,31 @@ async function editShoppingItemNote(index) {
     }
   }
 
-  // Wenn keine Notizen da sind, direkt eine leere Zeile anzeigen
-  if (notesArray.length === 0) {
-    notesArray.push('');
+  // Prüfen, ob im Array ein Wochentag enthalten ist
+  let foundDay = '';
+  const textNotes = notesArray.filter(noteText => {
+    const trimmed = String(noteText).trim();
+    const match = weekdays.find(d => d.toLowerCase() === trimmed.toLowerCase());
+    if (match) {
+      foundDay = match;
+      return false; // Wochentag aus den normalen Notizzeilen herausfiltern
+    }
+    return true;
+  });
+
+  // Dropdown-Wert setzen
+  const daySelect = document.getElementById('note-modal-day-select');
+  if (daySelect) {
+    daySelect.value = foundDay;
   }
 
-  // Für jede Notiz eine Zeile erstellen
-  notesArray.forEach(noteText => {
+  // Wenn keine Textnotizen übrig sind, direkt eine leere Zeile anzeigen
+  if (textNotes.length === 0) {
+    textNotes.push('');
+  }
+
+  // Für jede verbleibende Textnotiz eine Zeile erstellen
+  textNotes.forEach(noteText => {
     addNoteRow(noteText);
   });
 
@@ -3738,10 +3876,16 @@ async function saveNoteFromModal() {
 
   const currentItem = currentShoppingList[currentNoteIndex];
   
-  // Alle Eingabefelder im Modal einsammeln
-  const inputFields = document.querySelectorAll('.note-row-input');
   let notesArray = [];
+
+  // 1. NEU: Wochentag aus dem Dropdown auslesen und ganz vorne in das Array packen
+  const daySelect = document.getElementById('note-modal-day-select');
+  if (daySelect && daySelect.value) {
+    notesArray.push(daySelect.value);
+  }
   
+  // 2. Alle Eingabefelder im Modal einsammeln und Textnotizen anfügen
+  const inputFields = document.querySelectorAll('.note-row-input');
   inputFields.forEach(input => {
     const val = input.value.trim();
     if (val !== '') {
@@ -3749,7 +3893,7 @@ async function saveNoteFromModal() {
     }
   });
 
-  // Als JSON-String umwandeln (oder leer, wenn nichts eingetragen wurde)
+  // Als JSON-String umwandeln (oder leer, wenn weder Tag noch Notizen da sind)
   const jsonString = notesArray.length > 0 ? JSON.stringify(notesArray) : '';
 
   // Lokal aktualisieren
@@ -4337,19 +4481,34 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 });
 
-// Funktion zum einfügen der zutaten eins gerichtes in die einkaufliste
-// 1. Öffnet das Modal und lädt die Zutaten des angeklickten Rezepts
-async function openRecipeIngredients(recipeName) {
+async function openRecipeIngredients(recipeName, dayName) {
   const modal = document.getElementById('recipe-modal');
   const titleEl = document.getElementById('recipe-modal-title');
   const listEl = document.getElementById('recipe-ingredients-list');
 
-  titleEl.innerText = `Zutaten für: ${recipeName}`;
+  // Wochentag ermitteln: Entweder übergeben ODER im Wochenplan suchen
+  let targetDay = dayName || '';
+  if (!targetDay && typeof allPlansState !== 'undefined' && allPlansState.length > 0) {
+    for (const plan of allPlansState) {
+      if (plan.meals) {
+        const foundDay = Object.keys(plan.meals).find(d => 
+          plan.meals[d] && plan.meals[d].toLowerCase() === recipeName.toLowerCase()
+        );
+        if (foundDay) {
+          targetDay = foundDay;
+          break;
+        }
+      }
+    }
+  }
+
+  // Direkt am Modal-Element speichern
+  modal.dataset.recipeDay = targetDay;
+
+  titleEl.innerText = `Zutaten für: ${recipeName} ${targetDay ? '(' + targetDay + ')' : ''}`;
   listEl.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 20px;">Lade Zutaten...</div>';
   modal.style.display = 'flex';
 
-  // 1. Gerichtsnamen am Komma aufteilen (z.B. "Fischstäbchen, Kartoffelbrei" -> ["Fischstäbchen", "Kartoffelbrei"])
-  // Wir trennen sowohl an Kommas als auch an " und "
   const rawParts = recipeName.split(/,|\s+und\s+/i);
   const searchNames = rawParts.map(p => p.trim()).filter(p => p.length > 0);
 
@@ -4359,38 +4518,30 @@ async function openRecipeIngredients(recipeName) {
     return;
   }
 
-  // 2. Alle passenden Rezepte auf einmal aus Supabase abrufen (.in statt .single)
   const { data, error } = await db
     .from('recipes')
     .select('*')
-    .in('name', searchNames); // Sucht nach allen Namen aus unserem Array!
+    .in('name', searchNames);
 
   if (error || !data || data.length === 0) {
-    // Fallback: Versuchen wir es mit einer flexibleren Suche über .or(), falls die Groß-/Kleinschreibung abweicht
-    // Oder direkt die Meldung anzeigen:
     listEl.innerHTML = `<div style="text-align: center; color: var(--text-muted); padding: 20px;">Keine Rezeptdetails für "${recipeName}" in der Datenbank gefunden.</div>`;
     currentRecipeIngredients = [];
     return;
   }
 
-  // 3. Alle Zutaten aus allen gefundenen Rezepten einsammeln und zusammenführen
   let allCombinedIngredients = [];
-
   data.forEach(recipe => {
     let ing = recipe.ingredients || [];
     if (typeof ing === 'string') {
       ing = ing.split(',').map(i => ({ name: i.trim() }));
     }
-    // Zutaten anfügen
     ing.forEach(item => {
       const name = typeof item === 'string' ? item : item.name;
       if (name) allCombinedIngredients.push({ name: name.trim(), atHome: false });
     });
   });
 
-  // Doppelte Zutaten (falls z.B. in beiden Gerichten Salz steht) optional zusammenlegen oder einfach auflisten
   currentRecipeIngredients = allCombinedIngredients;
-
   renderRecipeIngredientsModal();
 }
 
@@ -4426,7 +4577,6 @@ function closeRecipeModal() {
 
 // 5. Nicht markierte (fehlende) Zutaten in die Supabase shopping_list übertragen
 async function transferMissingIngredientsToShoppingList() {
-  // Filtere alle heraus, die NICHT zuhause sind (atHome === false)
   const missingItems = currentRecipeIngredients.filter(ing => !ing.atHome);
 
   if (missingItems.length === 0) {
@@ -4435,10 +4585,15 @@ async function transferMissingIngredientsToShoppingList() {
     return;
   }
 
-  // Vorbereitung für Supabase Insert (nutzt deine 'text' und 'done' Spalten)
+  // Wochentag direkt sicher vom Modal-Element auslesen
+  const modal = document.getElementById('recipe-modal');
+  const targetDay = modal ? modal.dataset.recipeDay || '' : '';
+
+  // Payloads mit dem Wochentag als JSON-Array in der Notiz
   const payloads = missingItems.map(ing => ({
     text: ing.name,
-    done: false
+    done: false,
+    note: targetDay ? JSON.stringify([targetDay]) : ''
   }));
 
   const { data, error } = await db
@@ -4452,8 +4607,6 @@ async function transferMissingIngredientsToShoppingList() {
     return;
   }
 
-  // Optional: Auch direkt in den ingredient_catalog aufnehmen, falls noch nicht vorhanden
-  // (Damit sie im Katalog-Grid der Einkaufsliste auch auftauchen)
   for (const item of missingItems) {
     const exists = ingredientCatalog.find(c => c.name.toLowerCase() === item.name.toLowerCase());
     if (!exists) {
@@ -4461,13 +4614,12 @@ async function transferMissingIngredientsToShoppingList() {
     }
   }
 
-  // Lokale Einkaufsliste aktualisieren falls die Funktion existiert
   if (typeof fetchShoppingList === 'function') {
     fetchShoppingList();
   }
 
   closeRecipeModal();
-  alert(`${missingItems.length} fehlende Zutat(en) wurden zur Einkaufsliste hinzugefügt! 🛒`);
+  alert(`${missingItems.length} fehlende Zutat(en) wurden ${targetDay ? 'für ' + targetDay : ''} zur Einkaufsliste hinzugefügt! 🛒`);
 }
 
 // Hilfsfunktion: Ermittelt die aktuelle Kalenderwoche & Jahr
